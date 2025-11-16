@@ -372,6 +372,66 @@ Responde en formato JSON con la siguiente estructura:
         response = LLM.invoke(messages)
         import json
         import re
+        
+        def clean_json_string(text: str) -> str:
+            """Limpia una cadena para hacerla válida como JSON"""
+            # Remover caracteres de control inválidos (excepto \t, \n, \r)
+            # Los caracteres de control válidos en JSON son: \t (0x09), \n (0x0A), \r (0x0D)
+            cleaned = ""
+            for char in text:
+                code = ord(char)
+                # Permitir caracteres de control válidos y todos los demás caracteres
+                if code < 32 and char not in ['\t', '\n', '\r']:
+                    # Reemplazar caracteres de control inválidos por espacio
+                    cleaned += ' '
+                else:
+                    cleaned += char
+            return cleaned
+        
+        def repair_json_string(text: str) -> str:
+            """Repara JSON escapando saltos de línea dentro de cadenas"""
+            result = []
+            in_string = False
+            i = 0
+            
+            while i < len(text):
+                char = text[i]
+                
+                # Verificar si el carácter está escapado
+                is_escaped = i > 0 and text[i-1] == '\\'
+                # Contar escapes consecutivos para determinar si realmente está escapado
+                escape_count = 0
+                j = i - 1
+                while j >= 0 and text[j] == '\\':
+                    escape_count += 1
+                    j -= 1
+                is_escaped = escape_count % 2 == 1
+                
+                if char == '"' and not is_escaped:
+                    # Comilla de inicio/fin de cadena
+                    in_string = not in_string
+                    result.append(char)
+                elif in_string and not is_escaped:
+                    # Estamos dentro de una cadena y el carácter no está escapado
+                    if char == '\n':
+                        # Escapar saltos de línea dentro de cadenas
+                        result.append('\\n')
+                    elif char == '\r':
+                        # Escapar retornos de carro dentro de cadenas
+                        result.append('\\r')
+                    elif char == '\t':
+                        # Escapar tabs dentro de cadenas
+                        result.append('\\t')
+                    else:
+                        result.append(char)
+                else:
+                    # Fuera de cadena o carácter escapado, copiar tal cual
+                    result.append(char)
+                
+                i += 1
+            
+            return ''.join(result)
+        
         # Intentar parsear la respuesta como JSON
         response_text = response.content.strip()
         
@@ -383,17 +443,71 @@ Responde en formato JSON con la siguiente estructura:
                 response_text = json_match.group(1)
             else:
                 # Si no hay match, intentar extraer cualquier JSON del texto
-                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-                if json_match:
-                    response_text = json_match.group(0)
+                # Buscar desde la primera { hasta la última }
+                start = response_text.find('{')
+                if start != -1:
+                    # Contar llaves para encontrar el cierre
+                    brace_count = 0
+                    end = start
+                    for i in range(start, len(response_text)):
+                        if response_text[i] == '{':
+                            brace_count += 1
+                        elif response_text[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end = i + 1
+                                break
+                    if end > start:
+                        response_text = response_text[start:end]
         
         response_text = response_text.strip()
         
+        # Limpiar caracteres de control inválidos
+        response_text = clean_json_string(response_text)
+        
+        # Reparar JSON escapando saltos de línea dentro de cadenas
+        response_text = repair_json_string(response_text)
+        
+        # Intentar parsear el JSON
         judgment = json.loads(response_text)
+        
+        # Validar que tenga los campos necesarios
+        if "winner" not in judgment:
+            judgment["winner"] = "tie"
+        if "agent1_score" not in judgment:
+            judgment["agent1_score"] = 0.5
+        if "agent2_score" not in judgment:
+            judgment["agent2_score"] = 0.5
+        if "reasoning" not in judgment:
+            judgment["reasoning"] = "Juicio completado sin razonamiento detallado"
+        if "agent1_strengths" not in judgment:
+            judgment["agent1_strengths"] = []
+        if "agent2_strengths" not in judgment:
+            judgment["agent2_strengths"] = []
+        if "agent1_weaknesses" not in judgment:
+            judgment["agent1_weaknesses"] = []
+        if "agent2_weaknesses" not in judgment:
+            judgment["agent2_weaknesses"] = []
+        
         LOG.info(f"Juicio completado. Ganador: {judgment.get('winner', 'unknown')}")
         
+    except json.JSONDecodeError as e:
+        LOG.error(f"Error al parsear JSON del juicio: {e}")
+        LOG.error(f"Respuesta recibida (primeros 500 chars): {response.content[:500] if 'response' in locals() else 'N/A'}")
+        # Intentar extraer información manualmente del texto
+        judgment = {
+            "winner": "tie",
+            "reasoning": f"Error al parsear JSON: {str(e)}. La respuesta del juez no estaba en formato JSON válido.",
+            "agent1_score": 0.5,
+            "agent2_score": 0.5,
+            "agent1_strengths": [],
+            "agent2_strengths": [],
+            "agent1_weaknesses": [],
+            "agent2_weaknesses": []
+        }
     except Exception as e:
-        LOG.error(f"Error al parsear juicio: {e}. Respuesta recibida: {response.content[:200] if 'response' in locals() else 'N/A'}")
+        LOG.error(f"Error inesperado al juzgar: {e}")
+        LOG.error(f"Respuesta recibida (primeros 500 chars): {response.content[:500] if 'response' in locals() else 'N/A'}")
         # Fallback
         judgment = {
             "winner": "tie",
