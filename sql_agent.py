@@ -7,8 +7,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.exc import SQLAlchemyError
 import re
+from typing import Dict, Tuple, Set, Optional
 from textwrap import dedent
-from typing import Tuple, Optional
 
 
 load_dotenv()
@@ -213,6 +213,136 @@ Responde **SIEMPRE** en este formato y termina con "SQL final:" seguido únicame
     return prompt
 
 
+def _normalize_colname(c: str) -> str:
+    # Quita tipos/ruido si vinieran ("id INT" → "id")
+    c = c.strip()
+    c = c.split()[0]
+    c = c.rstrip(",")
+    return c
+
+def _build_column_index(schema: dict) -> Dict[str, Set[str]]:
+    """
+    Mapea columna -> set(tablas) en las que aparece.
+    Útil para saber a qué tabla pertenece 'genero', 'nombre', etc.
+    """
+    col_to_tables: Dict[str, Set[str]] = {}
+    for table, info in schema.get("tables", {}).items():
+        for col in info.get("columns", []):
+            cn = _normalize_colname(col)
+            col_to_tables.setdefault(cn, set()).add(table)
+    return col_to_tables
+
+def _parse_table_aliases(sql: str) -> Dict[str, str]:
+    """
+    Retorna alias->tabla a partir de FROM/JOIN.
+    Soporta 'FROM patients p', 'FROM patients AS p', o sin alias.
+    Si no hay alias, el alias implícito es el mismo nombre de la tabla.
+    """
+    alias_to_table: Dict[str, str] = {}
+
+    # FROM ...
+    m = re.search(r"\bFROM\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?", sql, flags=re.IGNORECASE)
+    if m:
+        tbl = m.group(1)
+        alias = m.group(2) or tbl
+        alias_to_table[alias] = tbl
+
+    # JOIN ...
+    for jm in re.finditer(r"\bJOIN\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?", sql, flags=re.IGNORECASE):
+        tbl = jm.group(1)
+        alias = jm.group(2) or tbl
+        alias_to_table[alias] = tbl
+
+    return alias_to_table
+
+def _route_misqualified_columns(sql: str, schema: dict) -> str:
+    """
+    Reescribe alias.column cuando la columna no pertenece a la tabla del alias
+    y SÍ es única en otra de las tablas presentes. También califica columnas
+    sin alias cuando son únicas.
+    """
+    alias_to_table = _parse_table_aliases(sql)
+    if not alias_to_table:
+        return sql  # nada que hacer
+
+    present_tables = set(alias_to_table.values())
+    col_index = _build_column_index(schema)
+
+    # 1) Corrige 'alias.col' mal calzados
+    def replace_alias_col(m):
+        alias = m.group(1)
+        col = m.group(2)
+        # si el alias no existe, no tocamos
+        if alias not in alias_to_table:
+            return m.group(0)
+        table_of_alias = alias_to_table[alias]
+
+        # si la columna sí pertenece a la tabla del alias, está bien
+        if col in col_index and table_of_alias in col_index[col]:
+            return m.group(0)
+
+        # Si la columna es única entre las tablas presentes, re-enrutar
+        candidate_tables = col_index.get(col, set()) & present_tables
+        if len(candidate_tables) == 1:
+            target_table = next(iter(candidate_tables))
+            # buscar el alias que corresponde a esa tabla
+            target_alias = None
+            for a, t in alias_to_table.items():
+                if t == target_table:
+                    target_alias = a
+                    break
+            if target_alias:
+                return f"{target_alias}.{col}"
+
+        # ambiguo o desconocido → no tocar
+        return m.group(0)
+
+    sql = re.sub(r"\b([a-zA-Z_]\w*)\s*\.\s*([a-zA-Z_]\w*)\b", replace_alias_col, sql)
+
+    # 2) Califica columnas solas (sin alias) cuando son únicas
+    # Evitar palabras clave SQL comunes
+    keywords = {
+        'select','from','where','join','on','and','or','group','by','having','order','limit',
+        'count','distinct','as','inner','left','right','outer','with','case','when','then','else','end',
+        'like','in','is','not','null','between','exists','union','all','any','some','top','offset','fetch'
+    }
+
+    def qualify_bare_columns(match):
+        col = match.group(1)
+        if col.lower() in keywords:
+            return match.group(0)
+        # Columnas muy comunes como 'id' suelen ser ambiguas; no calificar
+        if col.lower() in ('id',):
+            return match.group(0)
+        candidate_tables = col_index.get(col, set()) & present_tables
+        if len(candidate_tables) == 1:
+            target_table = next(iter(candidate_tables))
+            target_alias = None
+            for a, t in alias_to_table.items():
+                if t == target_table:
+                    target_alias = a
+                    break
+            if target_alias:
+                return f"{target_alias}.{col}"
+        return match.group(0)
+
+    # Sólo reescribir dentro de la cláusula WHERE/HAVING (para no romper SELECT/GROUP BY ya correctos)
+    where_m = re.search(r"\bWHERE\b(.+)$", sql, flags=re.IGNORECASE | re.DOTALL)
+    if where_m:
+        where_clause = where_m.group(1)
+
+        # Reescribe tokens no calificados que parezcan columnas
+        # patrón: palabra que no está precedida por '.' ni por dígito/cadena
+        where_clause_fixed = re.sub(
+            r"(?<!\.)\b([a-zA-Z_]\w*)\b",
+            qualify_bare_columns,
+            where_clause
+        )
+        sql = sql[:where_m.start(1)] + where_clause_fixed
+
+    return sql
+
+
 class SQLAgent:
     def __init__(self):
         try:
@@ -286,6 +416,10 @@ class SQLAgent:
 
                 # Si la pregunta pide cantidad, reforzar COUNT(...)
                 sql = _enforce_count_if_needed(query, sql).strip().rstrip(";")
+
+
+                # 🔧 NUEVO: corregir alias mal calzados (p.ej. d.genero → p.genero)
+                sql = _route_misqualified_columns(sql, self.schema)
 
                 # Validación con EXPLAIN (si hay self.db)
                 db = getattr(self, "db", None)
