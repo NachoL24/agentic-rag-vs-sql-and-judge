@@ -12,8 +12,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-DATA_DIR = Path("data")
-CHROMA_DIR = "chroma_db"
+# Rutas relativas al archivo RAG_agent.py
+_RAG_AGENT_DIR = Path(__file__).parent
+DATA_DIR = _RAG_AGENT_DIR / "data"
+CHROMA_DIR = _RAG_AGENT_DIR / "chroma_db"
 COLLECTION_NAME = "historias_clinicas"
 
 LLM_MODEL = "gemma3:1b"
@@ -85,7 +87,7 @@ def build_vector_store_from_scratch():
         documents=splits,
         embedding=embeddings,
         collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_DIR,
+        persist_directory=str(CHROMA_DIR),
     )
     print("Indice construido y persistido en", CHROMA_DIR)
     return vectordb
@@ -102,14 +104,14 @@ def get_vector_store():
         base_url=OLLAMA_HOST,
     )
 
-    if not os.path.exists(CHROMA_DIR) or not os.listdir(CHROMA_DIR):
+    if not CHROMA_DIR.exists() or not any(CHROMA_DIR.iterdir()):
         return build_vector_store_from_scratch()
 
     print("Cargando índice Chroma existente")
     vectordb = Chroma(
         collection_name=COLLECTION_NAME,
         embedding_function=embeddings,
-        persist_directory=CHROMA_DIR,
+        persist_directory=str(CHROMA_DIR),
     )
     return vectordb
 

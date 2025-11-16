@@ -28,12 +28,22 @@ if str(RAG_AGENT_DIR) not in sys.path:
 
 # Importar funciones del agente RAG
 try:
-    from RAG_agent import create_rag_chain
-    RAG_AGENT_AVAILABLE = True
-    LOG.info("Agente RAG importado exitosamente")
-except ImportError as e:
+    # Importar desde el archivo RAG_agent.py
+    import importlib.util
+    rag_agent_path = RAG_AGENT_DIR / "RAG_agent.py"
+    if rag_agent_path.exists():
+        spec = importlib.util.spec_from_file_location("RAG_agent_module", rag_agent_path)
+        rag_agent_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rag_agent_module)
+        create_rag_chain = rag_agent_module.create_rag_chain
+        RAG_AGENT_AVAILABLE = True
+        LOG.info("Agente RAG importado exitosamente")
+    else:
+        raise ImportError(f"No se encontró el archivo RAG_agent.py en {RAG_AGENT_DIR}")
+except Exception as e:
     RAG_AGENT_AVAILABLE = False
     LOG.warning(f"No se pudo importar el agente RAG: {e}. Se usará simulación.")
+    create_rag_chain = None
 
 # Configurar modelo LLM con Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -70,15 +80,8 @@ def get_rag_chain():
     global _rag_chain_cache
     if _rag_chain_cache is None and RAG_AGENT_AVAILABLE:
         try:
-            # Cambiar al directorio RAG_agent para que las rutas relativas funcionen
-            original_cwd = os.getcwd()
-            rag_agent_path = Path(__file__).parent / "RAG_agent"
-            os.chdir(rag_agent_path)
-            try:
-                _rag_chain_cache = create_rag_chain()
-                LOG.info("Cadena RAG creada exitosamente")
-            finally:
-                os.chdir(original_cwd)
+            _rag_chain_cache = create_rag_chain()
+            LOG.info("Cadena RAG creada exitosamente")
         except Exception as e:
             LOG.error(f"Error al crear la cadena RAG: {e}")
             _rag_chain_cache = None
@@ -96,15 +99,8 @@ def call_agent_rag(prompt: str) -> str:
             rag_chain = get_rag_chain()
             if rag_chain is not None:
                 LOG.info("Llamando al agente RAG (real)...")
-                # Cambiar al directorio RAG_agent para ejecutar
-                original_cwd = os.getcwd()
-                rag_agent_path = Path(__file__).parent / "RAG_agent"
-                os.chdir(rag_agent_path)
-                try:
-                    response = rag_chain.invoke(prompt)
-                    return response
-                finally:
-                    os.chdir(original_cwd)
+                response = rag_chain.invoke(prompt)
+                return response
         except Exception as e:
             LOG.warning(f"Error al usar agente RAG real: {e}. Usando simulación.")
     
@@ -210,138 +206,7 @@ def call_agent_sql(prompt: str) -> str:
     prompt_lower = prompt.lower()
     
     # Simulación de respuestas SQL típicas (más estructuradas, basadas en datos de BD)
-    if "diabetes" in prompt_lower or "diabético" in prompt_lower:
-        return """Consulta SQL ejecutada: SELECT * FROM condiciones_medicas WHERE nombre LIKE '%diabetes%' AND tipo = 'tipo2'
-
-Resultados de la base de datos:
-
-CONDICIÓN: Diabetes Tipo 2
-CÓDIGO_CIE10: E11
-PREVALENCIA: 8.5% de la población adulta
-
-SÍNTOMAS (tabla sintomas_condicion):
-- Código S01: Poliuria (frecuencia: 85%)
-- Código S02: Polidipsia (frecuencia: 80%)
-- Código S03: Polifagia (frecuencia: 75%)
-- Código S04: Fatiga (frecuencia: 70%)
-- Código S05: Visión borrosa (frecuencia: 45%)
-
-CRITERIOS_DIAGNÓSTICO (tabla criterios_diagnostico):
-- Glucosa en ayunas ≥ 126 mg/dL (ID: D001)
-- HbA1c ≥ 6.5% (ID: D002)
-- Glucosa aleatoria ≥ 200 mg/dL con síntomas (ID: D003)
-
-POBLACIÓN_AFECTADA:
-- Edad promedio: 55 años
-- Sexo: M 52%, F 48%
-- Factores de riesgo más comunes: obesidad (78%), sedentarismo (65%), antecedentes familiares (58%)"""
-    
-    elif "hipertensión" in prompt_lower or "presión arterial" in prompt_lower:
-        return """Consulta SQL ejecutada: SELECT * FROM condiciones_medicas WHERE nombre = 'Hipertensión Arterial'
-
-Resultados de la base de datos:
-
-CONDICIÓN: Hipertensión Arterial
-CÓDIGO_CIE10: I10
-PREVALENCIA: 32% de la población adulta
-
-SÍNTOMAS (tabla sintomas_condicion):
-- Mayoría asintomática (90% de casos)
-- Código S11: Dolor de cabeza (frecuencia: 15%)
-- Código S12: Mareos (frecuencia: 12%)
-
-CRITERIOS_DIAGNÓSTICO (tabla criterios_diagnostico):
-- Presión sistólica ≥ 140 mmHg (ID: D101)
-- Presión diastólica ≥ 90 mmHg (ID: D102)
-- Requiere 2+ mediciones en diferentes visitas
-
-CLASIFICACIÓN (tabla clasificacion_hta):
-- Estadio 1: 140-159/90-99 mmHg
-- Estadio 2: ≥160/≥100 mmHg
-- Crisis hipertensiva: ≥180/≥120 mmHg
-
-POBLACIÓN_AFECTADA:
-- Edad promedio: 58 años
-- Prevalencia aumenta con edad: 20-30 años (5%), 60+ años (65%)"""
-    
-    elif "asma" in prompt_lower:
-        return """Consulta SQL ejecutada: 
-SELECT c.nombre, s.sintoma, s.frecuencia, d.prueba_diagnostica 
-FROM condiciones_medicas c
-JOIN sintomas_condicion s ON c.id = s.condicion_id
-JOIN diagnosticos d ON c.id = d.condicion_id
-WHERE c.nombre = 'Asma'
-
-Resultados de la base de datos:
-
-CONDICIÓN: Asma
-CÓDIGO_CIE10: J45
-PREVALENCIA: 7.7% de la población
-
-SÍNTOMAS (tabla sintomas_condicion):
-- Sibilancia: frecuencia 92%
-- Disnea: frecuencia 88%
-- Opresión torácica: frecuencia 75%
-- Tos nocturna: frecuencia 68%
-
-PRUEBAS DIAGNÓSTICAS (tabla diagnosticos):
-- Espirometría: sensibilidad 85%
-- Prueba broncodilatadora: sensibilidad 78%
-- Flujo espiratorio máximo: sensibilidad 72%
-
-TIPOS (tabla tipos_asma):
-- Asma alérgica: 60% de casos
-- Asma no alérgica: 40% de casos
-- Asma inducida por ejercicio: 35% de casos"""
-    
-    elif "síntoma" in prompt_lower or "sintoma" in prompt_lower:
-        return """Consulta SQL ejecutada: SELECT * FROM sintomas WHERE activo = 1 ORDER BY frecuencia DESC
-
-Resultados de la base de datos:
-
-TABLA: sintomas
-Total de registros: 1,247 síntomas únicos
-
-SÍNTOMAS MÁS FRECUENTES (TOP 10):
-1. Fatiga - frecuencia: 23.5% de consultas
-2. Dolor de cabeza - frecuencia: 18.2%
-3. Fiebre - frecuencia: 15.8%
-4. Tos - frecuencia: 14.3%
-5. Dolor abdominal - frecuencia: 12.1%
-6. Náuseas - frecuencia: 11.5%
-7. Dificultad para respirar - frecuencia: 9.8%
-8. Dolor en el pecho - frecuencia: 8.4%
-9. Mareos - frecuencia: 7.9%
-10. Dolor articular - frecuencia: 6.7%
-
-RELACIONES (tabla sintoma_condicion):
-- Cada síntoma puede estar asociado a múltiples condiciones
-- Relaciones más comunes: fatiga → 45 condiciones, fiebre → 38 condiciones"""
-    
-    else:
-        return f"""Consulta SQL ejecutada: 
-SELECT * FROM consultas_medicas 
-WHERE pregunta LIKE '%{prompt[:50]}%' 
-ORDER BY fecha_consulta DESC 
-LIMIT 5
-
-Resultados de la base de datos:
-
-El agente SQL ha ejecutado una consulta estructurada en la base de datos médica relacional.
-
-ESTRUCTURA DE DATOS:
-- Tabla: consultas_medicas
-- Registros encontrados: 0 (consulta muy específica)
-- Tiempo de ejecución: 0.023 segundos
-
-TABLAS RELACIONADAS DISPONIBLES:
-- condiciones_medicas (2,341 registros)
-- sintomas (1,247 registros)
-- diagnosticos (3,892 registros)
-- pacientes (45,231 registros)
-- historias_clinicas (128,456 registros)
-
-Para obtener resultados más precisos, se recomienda refinar la consulta con términos más específicos o usar JOINs con tablas relacionadas."""
+    return """No hay información disponible en la base de datos para la consulta."""
 
 
 # Nodos del grafo
