@@ -37,6 +37,15 @@ ollama pull nomic-embed-text     # Para los embeddings
 python load_vector_data.py
 ```
 
+**Nota**: Si necesitas borrar y recrear la base de datos vectorial:
+```bash
+# Borrar la base de datos existente
+python clear_vector_db.py
+
+# Luego recrearla
+python load_vector_data.py
+```
+
 5. (Opcional) Configurar variables de entorno en `.env`:
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
