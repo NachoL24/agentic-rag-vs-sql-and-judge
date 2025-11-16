@@ -52,23 +52,68 @@ class SQLAgent:
         
         schema_text = "\n".join([f"{table}: {', '.join(info['columns'])}" for table, info in self.schema["tables"].items()])
         
-        prompt = f"""Eres un experto en SQL médico. Genera la consulta SQL más precisa para: {query}
+        prompt = f"""Eres un generador experto de SQL para una base de datos médica. 
+Tu única tarea es transformar una pregunta en lenguaje natural en una consulta SQL válida.
 
-Esquema de la base de datos (USA EXACTAMENTE estos nombres):
+### OBJETIVO
+Dado el input del usuario, genera la consulta SQL EXACTA que responda su pregunta, sin agregar nada más.
+
+---
+
+### ESQUEMA (usa solo estos nombres exactos)
 {schema_text}
 
-Reglas importantes:
-1. Usa EXACTAMENTE los nombres de tablas y columnas del esquema
-2. Si preguntan por "pacientes", usa la tabla "patients"
-3. Si preguntan por "diagnósticos", usa la tabla "diagnoses" 
-4. Si preguntan por "notas clínicas", usa la tabla "clinical_notes"
-5. Piensa qué tabla responde mejor a la pregunta
-6. Usa JOINs cuando sea necesario para obtener información completa
+---
 
-SQL:"""
+### REGLAS OBLIGATORIAS
+1. **Responde SOLO SQL. Nada de explicaciones, texto adicional ni formato markdown.**
+2. **Nunca inventes tablas ni columnas.** Si algo no existe en el esquema, usa lo más cercano o devuelve un SELECT vacío hacia la tabla correcta.
+3. Para preguntas de conteo, usa:  
+   `SELECT COUNT(*) FROM tabla;`
+4. Si la pregunta no menciona filtros, **no agregues WHERE**.
+5. Si la pregunta menciona “todos”, “listar”, “mostrar”, usar `SELECT *`.
+6. Si se mencionan condiciones, traducirlas a SQL estándar:
+   - “mayores de X años” → `edad > X`
+   - “menores de X años” → `edad < X`
+   - “entre X e Y” → `edad BETWEEN X AND Y`
+   - “con diagnóstico de X” → JOIN + condición con LIKE
+7. Si la pregunta requiere unir tablas (e.g. paciente + nota médica + diagnóstico), usa JOIN correctos basados en el esquema.
+8. Si la pregunta es ambigua, **elige la interpretación más literal y simple**.
+9. Si la pregunta pide orden, limita y agrupa, utiliza:
+   - `ORDER BY campo`
+   - `GROUP BY campo`
+   - `LIMIT N`
+10. **NO uses comillas invertidas ni alias automáticos.**
+11. Nunca agregues comentarios dentro del SQL.
+
+---
+
+### EJEMPLOS DE TRANSFORMACIÓN
+P: "¿Cuántos pacientes existen?"  
+R: `SELECT COUNT(*) FROM patients;`
+
+P: "Listame los pacientes mayores de 60 años"  
+R: `SELECT * FROM patients WHERE edad > 60;`
+
+P: "Notas clínicas del paciente con id 5"  
+R: `SELECT * FROM clinical_notes WHERE patient_id = 5;`
+
+P: "Pacientes con diagnósticos que incluyan 'asma'"  
+R: `SELECT p.* FROM patients p JOIN diagnoses d ON p.id = d.patient_id WHERE d.descripcion LIKE '%asma%';`
+
+---
+
+### INSTRUCCIÓN FINAL
+Genera una única consulta SQL que responda la pregunta:
+
+PREGUNTA:
+{query}
+
+SQL:
+"""
         
         try:
-            response = LLM.invoke([SystemMessage(content="Generas SQL preciso."), HumanMessage(content=prompt)])
+            response = LLM.invoke([SystemMessage(content="Generas consultas SQL precisas y simples. Respondes SOLO con SQL."), HumanMessage(content=prompt)])
             sql = response.content.strip()
             if "```" in sql:
                 sql = sql.split("```")[1].replace("sql", "").strip()
@@ -92,24 +137,29 @@ SQL:"""
         if not LLM:
             return f"Resultados: {results}"
 
-        prompt = f"""Eres un analista médico experto. Analiza estos resultados y proporciona un análisis médico completo:
+        prompt = f"""Eres un copiloto médico experto que asiste a doctores en su práctica clínica.
 
-Pregunta original: {query}
-Consulta SQL ejecutada: {sql}
-Resultados obtenidos: {results}
+Consulta del médico: {query}
+Datos encontrados: {results}
 
-Proporciona un análisis médico que incluya:
-1. Interpretación directa de los datos
-2. Significado clínico de los números
-3. Posibles implicaciones epidemiológicas
-4. Recomendaciones para el seguimiento médico
-5. Consideraciones sobre la calidad de los datos
-6. Sugerencias para análisis adicionales
+Como copiloto médico, proporciona:
 
-Análisis médico completo:"""
+1. **Interpretación clínica**: ¿Qué significan estos datos para la práctica médica?
+
+2. **Consideraciones diagnósticas**: ¿Qué patologías o condiciones deberías considerar?
+
+3. **Recomendaciones de seguimiento**: ¿Qué estudios adicionales o monitoreo sugieres?
+
+4. **Alertas clínicas**: ¿Hay algo que requiera atención inmediata?
+
+5. **Sugerencias de tratamiento**: ¿Qué enfoques terapéuticos podrían ser relevantes?
+
+6. **Próximos pasos**: ¿Qué acciones concretas recomiendas?
+
+Respuesta como copiloto médico:"""
 
         try:
-            response = LLM.invoke([SystemMessage(content="Eres un analista médico experto que proporciona análisis detallados y recomendaciones clínicas basadas en datos."), HumanMessage(content=prompt)])
+            response = LLM.invoke([SystemMessage(content="Eres un copiloto médico que asiste a doctores con insights clínicos prácticos, diagnósticos diferenciales y recomendaciones de tratamiento. No menciones aspectos técnicos de bases de datos."), HumanMessage(content=prompt)])
             return response.content.strip()
         except Exception as e:
             return f"Análisis: {results}"
