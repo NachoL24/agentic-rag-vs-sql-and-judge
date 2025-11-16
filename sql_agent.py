@@ -7,8 +7,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.exc import SQLAlchemyError
 import re
+from typing import Dict, Tuple, Set, Optional
 from textwrap import dedent
-from typing import Tuple, Optional
 
 
 load_dotenv()
@@ -213,6 +213,136 @@ Responde **SIEMPRE** en este formato y termina con "SQL final:" seguido únicame
     return prompt
 
 
+def _normalize_colname(c: str) -> str:
+    # Quita tipos/ruido si vinieran ("id INT" → "id")
+    c = c.strip()
+    c = c.split()[0]
+    c = c.rstrip(",")
+    return c
+
+def _build_column_index(schema: dict) -> Dict[str, Set[str]]:
+    """
+    Mapea columna -> set(tablas) en las que aparece.
+    Útil para saber a qué tabla pertenece 'genero', 'nombre', etc.
+    """
+    col_to_tables: Dict[str, Set[str]] = {}
+    for table, info in schema.get("tables", {}).items():
+        for col in info.get("columns", []):
+            cn = _normalize_colname(col)
+            col_to_tables.setdefault(cn, set()).add(table)
+    return col_to_tables
+
+def _parse_table_aliases(sql: str) -> Dict[str, str]:
+    """
+    Retorna alias->tabla a partir de FROM/JOIN.
+    Soporta 'FROM patients p', 'FROM patients AS p', o sin alias.
+    Si no hay alias, el alias implícito es el mismo nombre de la tabla.
+    """
+    alias_to_table: Dict[str, str] = {}
+
+    # FROM ...
+    m = re.search(r"\bFROM\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?", sql, flags=re.IGNORECASE)
+    if m:
+        tbl = m.group(1)
+        alias = m.group(2) or tbl
+        alias_to_table[alias] = tbl
+
+    # JOIN ...
+    for jm in re.finditer(r"\bJOIN\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?", sql, flags=re.IGNORECASE):
+        tbl = jm.group(1)
+        alias = jm.group(2) or tbl
+        alias_to_table[alias] = tbl
+
+    return alias_to_table
+
+def _route_misqualified_columns(sql: str, schema: dict) -> str:
+    """
+    Reescribe alias.column cuando la columna no pertenece a la tabla del alias
+    y SÍ es única en otra de las tablas presentes. También califica columnas
+    sin alias cuando son únicas.
+    """
+    alias_to_table = _parse_table_aliases(sql)
+    if not alias_to_table:
+        return sql  # nada que hacer
+
+    present_tables = set(alias_to_table.values())
+    col_index = _build_column_index(schema)
+
+    # 1) Corrige 'alias.col' mal calzados
+    def replace_alias_col(m):
+        alias = m.group(1)
+        col = m.group(2)
+        # si el alias no existe, no tocamos
+        if alias not in alias_to_table:
+            return m.group(0)
+        table_of_alias = alias_to_table[alias]
+
+        # si la columna sí pertenece a la tabla del alias, está bien
+        if col in col_index and table_of_alias in col_index[col]:
+            return m.group(0)
+
+        # Si la columna es única entre las tablas presentes, re-enrutar
+        candidate_tables = col_index.get(col, set()) & present_tables
+        if len(candidate_tables) == 1:
+            target_table = next(iter(candidate_tables))
+            # buscar el alias que corresponde a esa tabla
+            target_alias = None
+            for a, t in alias_to_table.items():
+                if t == target_table:
+                    target_alias = a
+                    break
+            if target_alias:
+                return f"{target_alias}.{col}"
+
+        # ambiguo o desconocido → no tocar
+        return m.group(0)
+
+    sql = re.sub(r"\b([a-zA-Z_]\w*)\s*\.\s*([a-zA-Z_]\w*)\b", replace_alias_col, sql)
+
+    # 2) Califica columnas solas (sin alias) cuando son únicas
+    # Evitar palabras clave SQL comunes
+    keywords = {
+        'select','from','where','join','on','and','or','group','by','having','order','limit',
+        'count','distinct','as','inner','left','right','outer','with','case','when','then','else','end',
+        'like','in','is','not','null','between','exists','union','all','any','some','top','offset','fetch'
+    }
+
+    def qualify_bare_columns(match):
+        col = match.group(1)
+        if col.lower() in keywords:
+            return match.group(0)
+        # Columnas muy comunes como 'id' suelen ser ambiguas; no calificar
+        if col.lower() in ('id',):
+            return match.group(0)
+        candidate_tables = col_index.get(col, set()) & present_tables
+        if len(candidate_tables) == 1:
+            target_table = next(iter(candidate_tables))
+            target_alias = None
+            for a, t in alias_to_table.items():
+                if t == target_table:
+                    target_alias = a
+                    break
+            if target_alias:
+                return f"{target_alias}.{col}"
+        return match.group(0)
+
+    # Sólo reescribir dentro de la cláusula WHERE/HAVING (para no romper SELECT/GROUP BY ya correctos)
+    where_m = re.search(r"\bWHERE\b(.+)$", sql, flags=re.IGNORECASE | re.DOTALL)
+    if where_m:
+        where_clause = where_m.group(1)
+
+        # Reescribe tokens no calificados que parezcan columnas
+        # patrón: palabra que no está precedida por '.' ni por dígito/cadena
+        where_clause_fixed = re.sub(
+            r"(?<!\.)\b([a-zA-Z_]\w*)\b",
+            qualify_bare_columns,
+            where_clause
+        )
+        sql = sql[:where_m.start(1)] + where_clause_fixed
+
+    return sql
+
+
 class SQLAgent:
     def __init__(self):
         try:
@@ -287,6 +417,10 @@ class SQLAgent:
                 # Si la pregunta pide cantidad, reforzar COUNT(...)
                 sql = _enforce_count_if_needed(query, sql).strip().rstrip(";")
 
+
+                # 🔧 NUEVO: corregir alias mal calzados (p.ej. d.genero → p.genero)
+                sql = _route_misqualified_columns(sql, self.schema)
+
                 # Validación con EXPLAIN (si hay self.db)
                 db = getattr(self, "db", None)
                 ok, err = _validate_with_explain(db, sql)
@@ -317,37 +451,110 @@ class SQLAgent:
         except SQLAlchemyError as e:
             LOG.error(f"Error ejecutando SQL: {e}")
             return [{"error": str(e)}]
-    
+
     def analyze_results(self, query: str, sql: str, results: List[Dict]) -> str:
+        """
+        Genera una opinión clínica basada en:
+        - query: pregunta clínica formulada por el médico
+        - sql: consulta SQL que generó los resultados (solo como contexto técnico)
+        - results: resultado crudo de la consulta (lista de dicts)
+        """
+
         if not LLM:
-            return f"Resultados: {results}"
+            # Fallback simple si no hay LLM configurado
+            return f"Resultados (sin análisis clínico por falta de LLM): {results}"
 
-        prompt = f"""Eres un copiloto médico experto que asiste a doctores en su práctica clínica.
+        # Prompt de SISTEMA: rol del modelo
+        system_prompt = """
+    Eres un MÉDICO ESPECIALISTA que asiste a otros médicos interpretando datos ya analizados.
 
-Consulta del médico: {query}
-Datos encontrados: {results}
+    SIEMPRE asume que tu lector ES UN PROFESIONAL DE LA SALUD, NO el paciente.
 
-Como copiloto médico, proporciona:
+    RECIBES SIEMPRE:
+    - Una PREGUNTA CLÍNICA formulada por otro médico.
+    - Un BLOQUE DE DATOS CLÍNICOS (resultado crudo de un análisis).
+    - OPCIONALMENTE, un BLOQUE DE CONTEXTO TÉCNICO (esquema de tablas y consulta utilizada).
 
-1. **Interpretación clínica**: ¿Qué significan estos datos para la práctica médica?
+    IMPORTANTE SOBRE EL CONTEXTO TÉCNICO:
+    - El esquema de la base de datos, la consulta y los nombres de tablas/campos se te dan SOLO para que entiendas mejor qué representan los números (por ejemplo, que se cuentan pacientes únicos, diagnósticos, consultas, etc.).
+    - NUNCA debes mencionar ni describir:
+      - SQL, queries, tablas, columnas, campos, bases de datos, tipos de datos, JSON.
+      - Nombres de tablas o columnas (por ejemplo, `patients`, `diagnoses`, `genero`, etc.).
+    - Tu respuesta debe ser 100% clínica, como si solo hubieras recibido un resumen numérico.
 
-2. **Consideraciones diagnósticas**: ¿Qué patologías o condiciones deberías considerar?
+    TU TAREA:
+    1. Responder a la pregunta con una OPINIÓN CLÍNICA razonada, basándote en:
+       - Los datos numéricos disponibles.
+       - Tu conocimiento médico general.
+    2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
 
-3. **Recomendaciones de seguimiento**: ¿Qué estudios adicionales o monitoreo sugieres?
+    ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
+    1) Resumen del hallazgo:
+       - Repite brevemente el resultado en términos clínicos.
+       - Ejemplo: “En la cohorte analizada se identifican 2 pacientes mujeres con diagnóstico de diabetes”.
+    2) Interpretación clínica:
+       - ¿Qué sugiere ese hallazgo (prevalencia, carga de enfermedad, riesgo, etc.)?
+    3) Recomendaciones / próximos pasos:
+       - Qué podría considerar el médico (evaluaciones adicionales, seguimiento, educación, etc.).
+    4) Limitaciones y cautelas:
+       - Comenta si el tamaño muestral es pequeño, si faltan variables relevantes, etc.
+       - Recalca que la decisión final debe basarse en la valoración clínica completa de cada paciente.
 
-4. **Alertas clínicas**: ¿Hay algo que requiera atención inmediata?
+    REGLAS DE SEGURIDAD CLÍNICA:
+    - No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
+    - No des indicaciones directas al paciente (“usted debe…”); formula siempre sugerencias para el médico (“podría considerarse…”, “sería razonable evaluar…”).
+    - No inventes números que no estén en los datos. Si necesitas cantidades, deriva solo lo que sea lógicamente inferible.
 
-5. **Sugerencias de tratamiento**: ¿Qué enfoques terapéuticos podrían ser relevantes?
+    Responde SOLO con el texto de la opinión clínica. No menciones el contexto técnico ni expliques estas instrucciones.
+    """.strip()
 
-6. **Próximos pasos**: ¿Qué acciones concretas recomiendas?
+        # Armamos el prompt de usuario con:
+        # - pregunta clínica
+        # - datos crudos
+        # - contexto técnico (schema + SQL) marcado como NO mencionable
+        schema_text = ""
+        try:
+            # Si tu schema es un dict/list ["table: cols..."], lo convertimos a texto
+            if self.schema:
+                if isinstance(self.schema, (list, tuple)):
+                    schema_text = "\n".join(self.schema)
+                else:
+                    schema_text = str(self.schema)
+        except AttributeError:
+            schema_text = "No schema disponible"
 
-Respuesta como copiloto médico:"""
+        user_prompt = f"""
+    Pregunta clínica del colega:
+    {query}
+
+    Datos clínicos (resultado crudo):
+    {results}
+
+    Contexto técnico (SOLO PARA TI, NO MENCIONAR EN LA RESPUESTA):
+
+    Schema disponible:
+    {schema_text}
+
+    SQL ejecutado:
+    {sql}
+
+    Redacta tu opinión clínica siguiendo las instrucciones del sistema.
+    """.strip()
 
         try:
-            response = LLM.invoke([SystemMessage(content="Eres un copiloto médico que asiste a doctores con insights clínicos prácticos, diagnósticos diferenciales y recomendaciones de tratamiento. No menciones aspectos técnicos de bases de datos."), HumanMessage(content=prompt)])
-            return response.content.strip()
-        except Exception as e:
-            return f"Análisis: {results}"
+            response = LLM.invoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ])
+            # Algunos LLMs devuelven .content directamente, otros en .content[0].text; ajusta si hace falta
+            content = getattr(response, "content", None)
+            if isinstance(content, str):
+                return content.strip()
+            # fallback por si el objeto viene más raro
+            return str(response).strip()
+        except Exception:
+            # En caso de error, devolvemos al menos los resultados crudos
+            return f"Resultados (no se pudo generar análisis clínico): {results}"
 
     def run(self, query: str) -> str:
         # Mostrar schema disponible para debug
