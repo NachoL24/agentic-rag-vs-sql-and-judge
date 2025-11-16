@@ -199,7 +199,7 @@ def chat_loop():
         if not question:
             continue
 
-        print("🤖 (...)\n")
+        print("🤖> (Pensando...)\n")
         answer = rag_chain.invoke(question)
         print(f"🤖 {answer}\n")
 
