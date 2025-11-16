@@ -11,7 +11,9 @@ services:
     restart: unless-stopped
 
   rag-app:
-    build: .
+    build:
+      context: ..
+      dockerfile: RAG_agent/Dockerfile
     container_name: rag-agent
     volumes:
       - ./data:/app/data
