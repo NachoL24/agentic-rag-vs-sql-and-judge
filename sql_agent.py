@@ -52,12 +52,18 @@ class SQLAgent:
         
         schema_text = "\n".join([f"{table}: {', '.join(info['columns'])}" for table, info in self.schema["tables"].items()])
         
-        prompt = f"""Genera consulta SQL para: {query}
+        prompt = f"""Eres un experto en SQL médico. Genera la consulta SQL más precisa para: {query}
 
 Esquema de la base de datos (USA EXACTAMENTE estos nombres):
 {schema_text}
 
-IMPORTANTE: Usa EXACTAMENTE los nombres de tablas y columnas del esquema. NO traduzcas ni cambies los nombres.
+Reglas importantes:
+1. Usa EXACTAMENTE los nombres de tablas y columnas del esquema
+2. Si preguntan por "pacientes", usa la tabla "patients"
+3. Si preguntan por "diagnósticos", usa la tabla "diagnoses" 
+4. Si preguntan por "notas clínicas", usa la tabla "clinical_notes"
+5. Piensa qué tabla responde mejor a la pregunta
+6. Usa JOINs cuando sea necesario para obtener información completa
 
 SQL:"""
         
@@ -86,16 +92,24 @@ SQL:"""
         if not LLM:
             return f"Resultados: {results}"
 
-        prompt = f"""Analiza estos resultados médicos:
+        prompt = f"""Eres un analista médico experto. Analiza estos resultados y proporciona un análisis médico completo:
 
-Pregunta: {query}
-SQL: {sql}
-Resultados: {results}
+Pregunta original: {query}
+Consulta SQL ejecutada: {sql}
+Resultados obtenidos: {results}
 
-Respuesta médica:"""
+Proporciona un análisis médico que incluya:
+1. Interpretación directa de los datos
+2. Significado clínico de los números
+3. Posibles implicaciones epidemiológicas
+4. Recomendaciones para el seguimiento médico
+5. Consideraciones sobre la calidad de los datos
+6. Sugerencias para análisis adicionales
+
+Análisis médico completo:"""
 
         try:
-            response = LLM.invoke([SystemMessage(content="Analista médico experto."), HumanMessage(content=prompt)])
+            response = LLM.invoke([SystemMessage(content="Eres un analista médico experto que proporciona análisis detallados y recomendaciones clínicas basadas en datos."), HumanMessage(content=prompt)])
             return response.content.strip()
         except Exception as e:
             return f"Análisis: {results}"
