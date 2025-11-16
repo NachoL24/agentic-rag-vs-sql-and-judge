@@ -490,15 +490,9 @@ class SQLAgent:
 
     ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
     1) Resumen del hallazgo:
-       - Repite brevemente el resultado en términos clínicos.
-       - Ejemplo: “En la cohorte analizada se identifican 2 pacientes mujeres con diagnóstico de diabetes”.
-    2) Interpretación clínica:
-       - ¿Qué sugiere ese hallazgo (prevalencia, carga de enfermedad, riesgo, etc.)?
-    3) Recomendaciones / próximos pasos:
-       - Qué podría considerar el médico (evaluaciones adicionales, seguimiento, educación, etc.).
-    4) Limitaciones y cautelas:
-       - Comenta si el tamaño muestral es pequeño, si faltan variables relevantes, etc.
-       - Recalca que la decisión final debe basarse en la valoración clínica completa de cada paciente.
+       - Interpreta brevemente el resultado en términos clínicos.
+    2) Respuesta a la pregunta:
+       - Debes responder la pregunta con una opinión clínica razonada, basándote en los datos numéricos disponibles y tu conocimiento médico general.
 
     REGLAS DE SEGURIDAD CLÍNICA:
     - No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
