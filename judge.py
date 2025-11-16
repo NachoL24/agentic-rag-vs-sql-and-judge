@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import clear, END
+from langgraph.graph import StateGraph, END
 
 # Cargar variables de entorno
 load_dotenv()
@@ -52,19 +52,94 @@ def call_agent_rag(prompt: str) -> str:
     Simula la llamada al agente RAG.
     En producción, esto llamaría a tu implementación real del agente RAG.
     """
-    LOG.info("Llamando al agente RAG...")
+    LOG.info("Llamando al agente RAG (simulado)...")
     
-    # Si tienes una implementación real, reemplaza esto
-    # Por ahora, simulamos una respuesta
-    if LLM:
-        messages = [
-            SystemMessage(content="Eres un agente RAG especializado en recuperación de información médica."),
-            HumanMessage(content=prompt)
-        ]
-        response = LLM.invoke(messages)
-        return response.content
+    # Respuestas simuladas realistas basadas en el tipo de pregunta
+    prompt_lower = prompt.lower()
+    
+    # Simulación de respuestas RAG típicas (más descriptivas, basadas en documentos)
+    if "diabetes" in prompt_lower or "diabético" in prompt_lower:
+        return """La diabetes tipo 2 es una condición crónica caracterizada por resistencia a la insulina y niveles elevados de glucosa en sangre.
+
+Síntomas más comunes:
+- Poliuria (micción frecuente)
+- Polidipsia (sed excesiva)
+- Polifagia (hambre excesiva)
+- Fatiga y debilidad
+- Visión borrosa
+- Cicatrización lenta de heridas
+- Infecciones recurrentes
+
+Diagnóstico:
+El diagnóstico se realiza mediante análisis de sangre que miden los niveles de glucosa. Los criterios incluyen:
+- Glucosa en ayunas ≥ 126 mg/dL
+- Glucosa aleatoria ≥ 200 mg/dL con síntomas
+- Hemoglobina glicosilada (HbA1c) ≥ 6.5%
+- Prueba de tolerancia a la glucosa oral con glucosa ≥ 200 mg/dL a las 2 horas
+
+La diabetes tipo 2 es más común en adultos mayores de 45 años, aunque está aumentando en personas más jóvenes debido a factores de estilo de vida."""
+    
+    elif "hipertensión" in prompt_lower or "presión arterial" in prompt_lower:
+        return """La hipertensión arterial es una condición médica crónica en la que la presión en las arterias está persistentemente elevada.
+
+Síntomas:
+La mayoría de las personas con hipertensión no presentan síntomas. Cuando aparecen, pueden incluir:
+- Dolor de cabeza
+- Dificultad para respirar
+- Mareos
+- Dolor en el pecho
+- Palpitaciones
+
+Diagnóstico:
+Se diagnostica mediante múltiples mediciones de presión arterial. Se considera hipertensión cuando:
+- Presión sistólica ≥ 140 mmHg
+- Presión diastólica ≥ 90 mmHg
+
+Factores de riesgo incluyen edad avanzada, obesidad, sedentarismo, consumo excesivo de sal y alcohol, y antecedentes familiares."""
+    
+    elif "asma" in prompt_lower:
+        return """El asma es una enfermedad crónica de las vías respiratorias caracterizada por inflamación y estrechamiento de los bronquios.
+
+Síntomas principales:
+- Sibilancia (silbido al respirar)
+- Dificultad para respirar
+- Opresión en el pecho
+- Tos, especialmente nocturna o temprano en la mañana
+
+Diagnóstico:
+Se realiza mediante:
+- Historia clínica y examen físico
+- Pruebas de función pulmonar (espirometría)
+- Prueba de broncodilatador
+- Medición del flujo espiratorio máximo
+- Pruebas de alergia para identificar desencadenantes
+
+El asma puede ser desencadenado por alérgenos, ejercicio, infecciones respiratorias, cambios climáticos y ciertos medicamentos."""
+    
+    elif "síntoma" in prompt_lower or "sintoma" in prompt_lower:
+        return """Los síntomas son manifestaciones subjetivas de una enfermedad o condición médica que el paciente experimenta y reporta.
+
+Tipos de síntomas:
+- Síntomas generales: fiebre, fatiga, malestar general
+- Síntomas específicos: relacionados con sistemas orgánicos particulares
+- Síntomas agudos: aparecen rápidamente
+- Síntomas crónicos: persisten durante tiempo prolongado
+
+Es importante que los pacientes reporten todos los síntomas a su médico, incluyendo cuándo comenzaron, su intensidad, factores que los empeoran o mejoran, y cualquier patrón temporal.
+
+El diagnóstico médico se basa en la combinación de síntomas reportados por el paciente, signos observados en el examen físico, y resultados de pruebas diagnósticas."""
+    
     else:
-        return f"[RAG] Respuesta simulada para: {prompt[:50]}..."
+        return f"""Basado en la información recuperada de documentos médicos y literatura especializada:
+
+El agente RAG ha procesado tu consulta sobre: "{prompt[:100]}"
+
+Respuesta basada en recuperación de información:
+Los sistemas RAG (Retrieval-Augmented Generation) recuperan información relevante de bases de conocimiento médicas para proporcionar respuestas precisas. 
+
+En este caso, se han identificado documentos relevantes que sugieren que la consulta requiere un análisis detallado de la información médica disponible. La respuesta se construye combinando fragmentos de información recuperados de múltiples fuentes médicas confiables.
+
+Para una respuesta más específica, sería necesario acceder a la base de conocimiento completa y realizar una búsqueda semántica más profunda en los documentos médicos indexados."""
 
 
 def call_agent_sql(prompt: str) -> str:
@@ -72,19 +147,144 @@ def call_agent_sql(prompt: str) -> str:
     Simula la llamada al agente SQL.
     En producción, esto llamaría a tu implementación real del agente SQL.
     """
-    LOG.info("Llamando al agente SQL...")
+    LOG.info("Llamando al agente SQL (simulado)...")
     
-    # Si tienes una implementación real, reemplaza esto
-    # Por ahora, simulamos una respuesta
-    if LLM:
-        messages = [
-            SystemMessage(content="Eres un agente SQL especializado en consultas a bases de datos médicas."),
-            HumanMessage(content=prompt)
-        ]
-        response = LLM.invoke(messages)
-        return response.content
+    # Respuestas simuladas realistas basadas en consultas SQL típicas
+    prompt_lower = prompt.lower()
+    
+    # Simulación de respuestas SQL típicas (más estructuradas, basadas en datos de BD)
+    if "diabetes" in prompt_lower or "diabético" in prompt_lower:
+        return """Consulta SQL ejecutada: SELECT * FROM condiciones_medicas WHERE nombre LIKE '%diabetes%' AND tipo = 'tipo2'
+
+Resultados de la base de datos:
+
+CONDICIÓN: Diabetes Tipo 2
+CÓDIGO_CIE10: E11
+PREVALENCIA: 8.5% de la población adulta
+
+SÍNTOMAS (tabla sintomas_condicion):
+- Código S01: Poliuria (frecuencia: 85%)
+- Código S02: Polidipsia (frecuencia: 80%)
+- Código S03: Polifagia (frecuencia: 75%)
+- Código S04: Fatiga (frecuencia: 70%)
+- Código S05: Visión borrosa (frecuencia: 45%)
+
+CRITERIOS_DIAGNÓSTICO (tabla criterios_diagnostico):
+- Glucosa en ayunas ≥ 126 mg/dL (ID: D001)
+- HbA1c ≥ 6.5% (ID: D002)
+- Glucosa aleatoria ≥ 200 mg/dL con síntomas (ID: D003)
+
+POBLACIÓN_AFECTADA:
+- Edad promedio: 55 años
+- Sexo: M 52%, F 48%
+- Factores de riesgo más comunes: obesidad (78%), sedentarismo (65%), antecedentes familiares (58%)"""
+    
+    elif "hipertensión" in prompt_lower or "presión arterial" in prompt_lower:
+        return """Consulta SQL ejecutada: SELECT * FROM condiciones_medicas WHERE nombre = 'Hipertensión Arterial'
+
+Resultados de la base de datos:
+
+CONDICIÓN: Hipertensión Arterial
+CÓDIGO_CIE10: I10
+PREVALENCIA: 32% de la población adulta
+
+SÍNTOMAS (tabla sintomas_condicion):
+- Mayoría asintomática (90% de casos)
+- Código S11: Dolor de cabeza (frecuencia: 15%)
+- Código S12: Mareos (frecuencia: 12%)
+
+CRITERIOS_DIAGNÓSTICO (tabla criterios_diagnostico):
+- Presión sistólica ≥ 140 mmHg (ID: D101)
+- Presión diastólica ≥ 90 mmHg (ID: D102)
+- Requiere 2+ mediciones en diferentes visitas
+
+CLASIFICACIÓN (tabla clasificacion_hta):
+- Estadio 1: 140-159/90-99 mmHg
+- Estadio 2: ≥160/≥100 mmHg
+- Crisis hipertensiva: ≥180/≥120 mmHg
+
+POBLACIÓN_AFECTADA:
+- Edad promedio: 58 años
+- Prevalencia aumenta con edad: 20-30 años (5%), 60+ años (65%)"""
+    
+    elif "asma" in prompt_lower:
+        return """Consulta SQL ejecutada: 
+SELECT c.nombre, s.sintoma, s.frecuencia, d.prueba_diagnostica 
+FROM condiciones_medicas c
+JOIN sintomas_condicion s ON c.id = s.condicion_id
+JOIN diagnosticos d ON c.id = d.condicion_id
+WHERE c.nombre = 'Asma'
+
+Resultados de la base de datos:
+
+CONDICIÓN: Asma
+CÓDIGO_CIE10: J45
+PREVALENCIA: 7.7% de la población
+
+SÍNTOMAS (tabla sintomas_condicion):
+- Sibilancia: frecuencia 92%
+- Disnea: frecuencia 88%
+- Opresión torácica: frecuencia 75%
+- Tos nocturna: frecuencia 68%
+
+PRUEBAS DIAGNÓSTICAS (tabla diagnosticos):
+- Espirometría: sensibilidad 85%
+- Prueba broncodilatadora: sensibilidad 78%
+- Flujo espiratorio máximo: sensibilidad 72%
+
+TIPOS (tabla tipos_asma):
+- Asma alérgica: 60% de casos
+- Asma no alérgica: 40% de casos
+- Asma inducida por ejercicio: 35% de casos"""
+    
+    elif "síntoma" in prompt_lower or "sintoma" in prompt_lower:
+        return """Consulta SQL ejecutada: SELECT * FROM sintomas WHERE activo = 1 ORDER BY frecuencia DESC
+
+Resultados de la base de datos:
+
+TABLA: sintomas
+Total de registros: 1,247 síntomas únicos
+
+SÍNTOMAS MÁS FRECUENTES (TOP 10):
+1. Fatiga - frecuencia: 23.5% de consultas
+2. Dolor de cabeza - frecuencia: 18.2%
+3. Fiebre - frecuencia: 15.8%
+4. Tos - frecuencia: 14.3%
+5. Dolor abdominal - frecuencia: 12.1%
+6. Náuseas - frecuencia: 11.5%
+7. Dificultad para respirar - frecuencia: 9.8%
+8. Dolor en el pecho - frecuencia: 8.4%
+9. Mareos - frecuencia: 7.9%
+10. Dolor articular - frecuencia: 6.7%
+
+RELACIONES (tabla sintoma_condicion):
+- Cada síntoma puede estar asociado a múltiples condiciones
+- Relaciones más comunes: fatiga → 45 condiciones, fiebre → 38 condiciones"""
+    
     else:
-        return f"[SQL] Respuesta simulada para: {prompt[:50]}..."
+        return f"""Consulta SQL ejecutada: 
+SELECT * FROM consultas_medicas 
+WHERE pregunta LIKE '%{prompt[:50]}%' 
+ORDER BY fecha_consulta DESC 
+LIMIT 5
+
+Resultados de la base de datos:
+
+El agente SQL ha ejecutado una consulta estructurada en la base de datos médica relacional.
+
+ESTRUCTURA DE DATOS:
+- Tabla: consultas_medicas
+- Registros encontrados: 0 (consulta muy específica)
+- Tiempo de ejecución: 0.023 segundos
+
+TABLAS RELACIONADAS DISPONIBLES:
+- condiciones_medicas (2,341 registros)
+- sintomas (1,247 registros)
+- diagnosticos (3,892 registros)
+- pacientes (45,231 registros)
+- historias_clinicas (128,456 registros)
+
+Para obtener resultados más precisos, se recomienda refinar la consulta con términos más específicos o usar JOINs con tablas relacionadas."""
 
 
 # Nodos del grafo
@@ -324,7 +524,7 @@ def create_judge_graph():
     """Crea y retorna el grafo del agente juez"""
     
     # Crear el grafo
-    workflow = clear(JudgeState)
+    workflow = StateGraph(JudgeState)
     
     # Agregar nodos
     workflow.add_node("call_agent1", call_agent1_node)
