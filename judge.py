@@ -29,7 +29,7 @@ from sql_agent import run_sql_agent
 
 # Configurar modelo LLM con Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
 try:
     LLM = ChatOllama(
@@ -56,17 +56,27 @@ class JudgeState(TypedDict):
 
 # Variable global para cachear la cadena RAG
 _rag_chain_cache = None
+_rag_chain_k = None
 
-def get_rag_chain():
-    """Obtiene o crea la cadena RAG (con cache)"""
-    global _rag_chain_cache
-    if _rag_chain_cache is None:
+def get_rag_chain(k: int = 15):
+    """
+    Obtiene o crea la cadena RAG (con cache)
+    
+    Args:
+        k: Número de documentos a recuperar (por defecto 15 para mejor cobertura)
+    """
+    global _rag_chain_cache, _rag_chain_k
+    # Invalidar cache si k cambió
+    if _rag_chain_cache is None or _rag_chain_k != k:
         try:
-            _rag_chain_cache = create_rag_chain()
-            LOG.info("Cadena RAG creada exitosamente")
+            # Aumentar k para recuperar más documentos y mejorar la cobertura
+            _rag_chain_cache = create_rag_chain(k=k)
+            _rag_chain_k = k
+            LOG.info(f"Cadena RAG creada exitosamente con k={k}")
         except Exception as e:
             LOG.error(f"Error al crear la cadena RAG: {e}")
             _rag_chain_cache = None
+            _rag_chain_k = None
     return _rag_chain_cache
 
 
