@@ -127,7 +127,7 @@ def main():
     
     # Obtener ruta del archivo seed
     script_dir = Path(__file__).parent
-    seed_file = script_dir / "seed (2).sql"
+    seed_file = script_dir / "seeds" / "seed.sql"
     
     if not seed_file.exists():
         LOG.error(f"Archivo seed no encontrado: {seed_file}")
