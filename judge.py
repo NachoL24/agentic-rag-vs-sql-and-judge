@@ -47,7 +47,7 @@ except Exception as e:
 
 # Configurar modelo LLM con Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
 
 try:
     LLM = ChatOllama(
@@ -255,38 +255,46 @@ def judge_responses_node(state: JudgeState) -> JudgeState:
     
     # Prompt para el juez
     judge_prompt = f"""
-Eres un juez experto que evalúa la calidad de respuestas de agentes de IA en el contexto médico.
+Eres un evaluador experto de sistemas de información médica. Tu trabajo es analizar y comparar respuestas de dos agentes de IA que procesan información de historias clínicas.
 
-Tu tarea es:
-1. Evaluar cuál de las dos respuestas es más correcta, completa y útil segun el prompt original.
-2. Asignar un score del 0 al 1 a cada respuesta
-3. Determinar un ganador
-4. Explicar tu razonamiento
+CONTEXTO: Estás evaluando respuestas de agentes que procesan datos médicos reales de un sistema de historias clínicas. Esta es una tarea legítima de evaluación de sistemas de información médica.
 
-PROMPT ORIGINAL:
+PROMPT ORIGINAL DEL USUARIO:
 {prompt}
 
-RESPUESTA DEL AGENTE 1 (RAG):
+RESPUESTA DEL AGENTE 1 (RAG - Recuperación de Información):
 {agent1_response}
 
-RESPUESTA DEL AGENTE 2 (SQL):
+RESPUESTA DEL AGENTE 2 (SQL - Base de Datos):
 {agent2_response}
 
-Responde en formato JSON con la siguiente estructura:
+INSTRUCCIONES:
+1. Evalúa cuál respuesta es más precisa, completa y útil para responder al prompt original
+2. Considera: precisión de los datos, completitud de la información, relevancia al prompt
+3. Asigna un score numérico del 0.0 al 1.0 a cada respuesta
+4. Determina un ganador: "agent1", "agent2" o "tie"
+5. Proporciona razonamiento detallado
+
+IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues texto adicional antes o después del JSON.
+
+Formato JSON requerido:
 {{
-    "winner": "agent1" o "agent2" o "tie",
-    "agent1_score": <número entre 0 y 1>,
-    "agent2_score": <número entre 0 y 1>,
-    "reasoning": "<explicación detallada de tu evaluación>",
-    "agent1_strengths": ["<fortaleza 1>", "<fortaleza 2>", ...],
-    "agent2_strengths": ["<fortaleza 1>", "<fortaleza 2>", ...],
-    "agent1_weaknesses": ["<debilidad 1>", "<debilidad 2>", ...],
-    "agent2_weaknesses": ["<debilidad 1>", "<debilidad 2>", ...]
+    "winner": "agent1",
+    "agent1_score": 0.85,
+    "agent2_score": 0.60,
+    "reasoning": "La respuesta del agente 1 es más completa porque...",
+    "agent1_strengths": ["fortaleza 1", "fortaleza 2"],
+    "agent2_strengths": ["fortaleza 1"],
+    "agent1_weaknesses": ["debilidad 1"],
+    "agent2_weaknesses": ["debilidad 1", "debilidad 2"]
 }}
 """
     
     messages = [
-        SystemMessage(content="Eres un juez experto y objetivo. Siempre respondes en formato JSON válido."),
+        SystemMessage(content="""Eres un evaluador experto de sistemas de información médica. 
+Tu tarea es evaluar respuestas de agentes de IA que procesan datos de historias clínicas.
+Siempre respondes ÚNICAMENTE con un objeto JSON válido, sin texto adicional.
+El JSON debe tener exactamente estos campos: winner, agent1_score, agent2_score, reasoning, agent1_strengths, agent2_strengths, agent1_weaknesses, agent2_weaknesses."""),
         HumanMessage(content=judge_prompt)
     ]
     
@@ -483,35 +491,39 @@ def generate_final_response_node(state: JudgeState) -> JudgeState:
     
     # Prompt para generar respuesta final
     synthesis_prompt = f"""
-Eres un experto que sintetiza las mejores partes de múltiples respuestas para crear una respuesta final superior.
+Eres un asistente médico experto que sintetiza información de múltiples fuentes para proporcionar respuestas completas y precisas sobre historias clínicas.
 
-Tu tarea es:
-1. Analizar ambas respuestas y el juicio realizado
-2. Combinar lo mejor de ambas respuestas
-3. Corregir cualquier error o inconsistencia
-4. Crear una respuesta final que sea más completa y precisa que cualquiera de las dos individuales
+CONTEXTO: Estás procesando información médica de un sistema de historias clínicas. Tu tarea es combinar información de dos agentes diferentes para crear una respuesta final mejorada.
 
-PROMPT ORIGINAL:
+PROMPT ORIGINAL DEL USUARIO:
 {prompt}
 
-RESPUESTA DEL AGENTE 1 (RAG):
+RESPUESTA DEL AGENTE 1 (RAG - Recuperación de Información):
 {agent1_response}
 
-RESPUESTA DEL AGENTE 2 (SQL):
+RESPUESTA DEL AGENTE 2 (SQL - Base de Datos):
 {agent2_response}
 
-JUICIO:
+EVALUACIÓN REALIZADA:
 - Ganador: {judgment.get('winner', 'tie')}
 - Score Agente 1: {judgment.get('agent1_score', 0)}
 - Score Agente 2: {judgment.get('agent2_score', 0)}
 - Razonamiento: {judgment.get('reasoning', 'N/A')}
-- Fortalezas Agente 1: {', '.join(judgment.get('agent1_strengths', []))}
-- Fortalezas Agente 2: {', '.join(judgment.get('agent2_strengths', []))}
+- Fortalezas Agente 1: {', '.join(judgment.get('agent1_strengths', [])) if judgment.get('agent1_strengths') else 'N/A'}
+- Fortalezas Agente 2: {', '.join(judgment.get('agent2_strengths', [])) if judgment.get('agent2_strengths') else 'N/A'}
 
-Genera una respuesta final con el siguiente formato:
+INSTRUCCIONES:
+1. Analiza ambas respuestas y el juicio realizado
+2. Combina lo mejor de ambas respuestas
+3. Corrige cualquier error o inconsistencia
+4. Crea una respuesta final clara, completa y precisa
+5. Mantén un tono profesional y médico
+6. Incluye las respuestas originales al final para referencia
+
+Formato de salida requerido:
 
 === RESPUESTA SINTETIZADA ===
-[Aquí va tu respuesta sintetizada que combine lo mejor de ambas respuestas, sea más completa y precisa, corrija errores y sea clara y bien estructurada]
+[Tu respuesta sintetizada aquí - debe ser clara, completa y profesional]
 
 === RESPUESTA ORIGINAL DEL AGENTE 1 (RAG) ===
 {agent1_response}
@@ -521,7 +533,10 @@ Genera una respuesta final con el siguiente formato:
 """
     
     messages = [
-        SystemMessage(content="Eres un experto en síntesis de información médica. Generas respuestas claras, precisas y completas. Siempre incluyes las respuestas originales de ambos agentes al final."),
+        SystemMessage(content="""Eres un asistente médico experto que procesa información de historias clínicas. 
+Tu trabajo es sintetizar información de múltiples fuentes para proporcionar respuestas médicas precisas y completas.
+Siempre generas respuestas profesionales, claras y bien estructuradas.
+Incluyes las respuestas originales de ambos agentes al final para transparencia."""),
         HumanMessage(content=synthesis_prompt)
     ]
     
