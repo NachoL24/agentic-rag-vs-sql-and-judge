@@ -451,37 +451,110 @@ class SQLAgent:
         except SQLAlchemyError as e:
             LOG.error(f"Error ejecutando SQL: {e}")
             return [{"error": str(e)}]
-    
+
     def analyze_results(self, query: str, sql: str, results: List[Dict]) -> str:
+        """
+        Genera una opinión clínica basada en:
+        - query: pregunta clínica formulada por el médico
+        - sql: consulta SQL que generó los resultados (solo como contexto técnico)
+        - results: resultado crudo de la consulta (lista de dicts)
+        """
+
         if not LLM:
-            return f"Resultados: {results}"
+            # Fallback simple si no hay LLM configurado
+            return f"Resultados (sin análisis clínico por falta de LLM): {results}"
 
-        prompt = f"""Eres un copiloto médico experto que asiste a doctores en su práctica clínica.
+        # Prompt de SISTEMA: rol del modelo
+        system_prompt = """
+    Eres un MÉDICO ESPECIALISTA que asiste a otros médicos interpretando datos ya analizados.
 
-Consulta del médico: {query}
-Datos encontrados: {results}
+    SIEMPRE asume que tu lector ES UN PROFESIONAL DE LA SALUD, NO el paciente.
 
-Como copiloto médico, proporciona:
+    RECIBES SIEMPRE:
+    - Una PREGUNTA CLÍNICA formulada por otro médico.
+    - Un BLOQUE DE DATOS CLÍNICOS (resultado crudo de un análisis).
+    - OPCIONALMENTE, un BLOQUE DE CONTEXTO TÉCNICO (esquema de tablas y consulta utilizada).
 
-1. **Interpretación clínica**: ¿Qué significan estos datos para la práctica médica?
+    IMPORTANTE SOBRE EL CONTEXTO TÉCNICO:
+    - El esquema de la base de datos, la consulta y los nombres de tablas/campos se te dan SOLO para que entiendas mejor qué representan los números (por ejemplo, que se cuentan pacientes únicos, diagnósticos, consultas, etc.).
+    - NUNCA debes mencionar ni describir:
+      - SQL, queries, tablas, columnas, campos, bases de datos, tipos de datos, JSON.
+      - Nombres de tablas o columnas (por ejemplo, `patients`, `diagnoses`, `genero`, etc.).
+    - Tu respuesta debe ser 100% clínica, como si solo hubieras recibido un resumen numérico.
 
-2. **Consideraciones diagnósticas**: ¿Qué patologías o condiciones deberías considerar?
+    TU TAREA:
+    1. Responder a la pregunta con una OPINIÓN CLÍNICA razonada, basándote en:
+       - Los datos numéricos disponibles.
+       - Tu conocimiento médico general.
+    2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
 
-3. **Recomendaciones de seguimiento**: ¿Qué estudios adicionales o monitoreo sugieres?
+    ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
+    1) Resumen del hallazgo:
+       - Repite brevemente el resultado en términos clínicos.
+       - Ejemplo: “En la cohorte analizada se identifican 2 pacientes mujeres con diagnóstico de diabetes”.
+    2) Interpretación clínica:
+       - ¿Qué sugiere ese hallazgo (prevalencia, carga de enfermedad, riesgo, etc.)?
+    3) Recomendaciones / próximos pasos:
+       - Qué podría considerar el médico (evaluaciones adicionales, seguimiento, educación, etc.).
+    4) Limitaciones y cautelas:
+       - Comenta si el tamaño muestral es pequeño, si faltan variables relevantes, etc.
+       - Recalca que la decisión final debe basarse en la valoración clínica completa de cada paciente.
 
-4. **Alertas clínicas**: ¿Hay algo que requiera atención inmediata?
+    REGLAS DE SEGURIDAD CLÍNICA:
+    - No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
+    - No des indicaciones directas al paciente (“usted debe…”); formula siempre sugerencias para el médico (“podría considerarse…”, “sería razonable evaluar…”).
+    - No inventes números que no estén en los datos. Si necesitas cantidades, deriva solo lo que sea lógicamente inferible.
 
-5. **Sugerencias de tratamiento**: ¿Qué enfoques terapéuticos podrían ser relevantes?
+    Responde SOLO con el texto de la opinión clínica. No menciones el contexto técnico ni expliques estas instrucciones.
+    """.strip()
 
-6. **Próximos pasos**: ¿Qué acciones concretas recomiendas?
+        # Armamos el prompt de usuario con:
+        # - pregunta clínica
+        # - datos crudos
+        # - contexto técnico (schema + SQL) marcado como NO mencionable
+        schema_text = ""
+        try:
+            # Si tu schema es un dict/list ["table: cols..."], lo convertimos a texto
+            if self.schema:
+                if isinstance(self.schema, (list, tuple)):
+                    schema_text = "\n".join(self.schema)
+                else:
+                    schema_text = str(self.schema)
+        except AttributeError:
+            schema_text = "No schema disponible"
 
-Respuesta como copiloto médico:"""
+        user_prompt = f"""
+    Pregunta clínica del colega:
+    {query}
+
+    Datos clínicos (resultado crudo):
+    {results}
+
+    Contexto técnico (SOLO PARA TI, NO MENCIONAR EN LA RESPUESTA):
+
+    Schema disponible:
+    {schema_text}
+
+    SQL ejecutado:
+    {sql}
+
+    Redacta tu opinión clínica siguiendo las instrucciones del sistema.
+    """.strip()
 
         try:
-            response = LLM.invoke([SystemMessage(content="Eres un copiloto médico que asiste a doctores con insights clínicos prácticos, diagnósticos diferenciales y recomendaciones de tratamiento. No menciones aspectos técnicos de bases de datos."), HumanMessage(content=prompt)])
-            return response.content.strip()
-        except Exception as e:
-            return f"Análisis: {results}"
+            response = LLM.invoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ])
+            # Algunos LLMs devuelven .content directamente, otros en .content[0].text; ajusta si hace falta
+            content = getattr(response, "content", None)
+            if isinstance(content, str):
+                return content.strip()
+            # fallback por si el objeto viene más raro
+            return str(response).strip()
+        except Exception:
+            # En caso de error, devolvemos al menos los resultados crudos
+            return f"Resultados (no se pudo generar análisis clínico): {results}"
 
     def run(self, query: str) -> str:
         # Mostrar schema disponible para debug
