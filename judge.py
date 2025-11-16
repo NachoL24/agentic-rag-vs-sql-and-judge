@@ -21,29 +21,11 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
-# Agregar el directorio RAG_agent al path para importar el módulo
-RAG_AGENT_DIR = Path(__file__).parent / "RAG_agent"
-if str(RAG_AGENT_DIR) not in sys.path:
-    sys.path.insert(0, str(RAG_AGENT_DIR))
-
 # Importar funciones del agente RAG
-try:
-    # Importar desde el archivo RAG_agent.py
-    import importlib.util
-    rag_agent_path = RAG_AGENT_DIR / "RAG_agent.py"
-    if rag_agent_path.exists():
-        spec = importlib.util.spec_from_file_location("RAG_agent_module", rag_agent_path)
-        rag_agent_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(rag_agent_module)
-        create_rag_chain = rag_agent_module.create_rag_chain
-        RAG_AGENT_AVAILABLE = True
-        LOG.info("Agente RAG importado exitosamente")
-    else:
-        raise ImportError(f"No se encontró el archivo RAG_agent.py en {RAG_AGENT_DIR}")
-except Exception as e:
-    RAG_AGENT_AVAILABLE = False
-    LOG.warning(f"No se pudo importar el agente RAG: {e}. Se usará simulación.")
-    create_rag_chain = None
+from RAG_agent.RAG_agent import create_rag_chain
+
+# Importar funciones del agente SQL
+from sql_agent import run_sql_agent
 
 # Configurar modelo LLM con Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -78,7 +60,7 @@ _rag_chain_cache = None
 def get_rag_chain():
     """Obtiene o crea la cadena RAG (con cache)"""
     global _rag_chain_cache
-    if _rag_chain_cache is None and RAG_AGENT_AVAILABLE:
+    if _rag_chain_cache is None:
         try:
             _rag_chain_cache = create_rag_chain()
             LOG.info("Cadena RAG creada exitosamente")
@@ -91,18 +73,18 @@ def get_rag_chain():
 # Funciones para llamar a los agentes (pueden ser reemplazadas por implementaciones reales)
 def call_agent_rag(prompt: str) -> str:
     """
-    Llama al agente RAG real si está disponible, sino usa simulación.
+    Llama al agente RAG.
     """
-    # Intentar usar el agente RAG real
-    if RAG_AGENT_AVAILABLE:
-        try:
-            rag_chain = get_rag_chain()
-            if rag_chain is not None:
-                LOG.info("Llamando al agente RAG (real)...")
-                response = rag_chain.invoke(prompt)
-                return response
-        except Exception as e:
-            LOG.warning(f"Error al usar agente RAG real: {e}. Usando simulación.")
+    try:
+        rag_chain = get_rag_chain()
+        if rag_chain is not None:
+            LOG.info("Llamando al agente RAG...")
+            response = rag_chain.invoke(prompt)
+            return response
+        else:
+            raise Exception("No se pudo crear la cadena RAG")
+    except Exception as e:
+        LOG.warning(f"Error al usar agente RAG: {e}. Usando simulación.")
     
     # Fallback a simulación
     LOG.info("Llamando al agente RAG (simulado)...")
@@ -197,15 +179,17 @@ Para una respuesta más específica, sería necesario acceder a la base de conoc
 
 def call_agent_sql(prompt: str) -> str:
     """
-    Simula la llamada al agente SQL.
-    En producción, esto llamaría a tu implementación real del agente SQL.
+    Llama al agente SQL.
     """
+    try:
+        LOG.info("Llamando al agente SQL...")
+        response = run_sql_agent(prompt)
+        return response
+    except Exception as e:
+        LOG.warning(f"Error al usar agente SQL: {e}. Usando simulación.")
+    
+    # Fallback a simulación
     LOG.info("Llamando al agente SQL (simulado)...")
-    
-    # Respuestas simuladas realistas basadas en consultas SQL típicas
-    prompt_lower = prompt.lower()
-    
-    # Simulación de respuestas SQL típicas (más estructuradas, basadas en datos de BD)
     return """No hay información disponible en la base de datos para la consulta."""
 
 
