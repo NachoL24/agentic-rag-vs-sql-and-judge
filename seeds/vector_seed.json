@@ -1,0 +1,402 @@
+[
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta dolor tor\u00e1cico y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta n\u00e1useas y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta visi\u00f3n borrosa y posee historial de Diabetes tipo 2."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta visi\u00f3n borrosa y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta visi\u00f3n borrosa y posee historial de Anemia."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta n\u00e1useas y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta dificultad respiratoria y posee historial de Anemia."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta n\u00e1useas y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta mareos y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 1,
+    "chunk": "Paciente Eliseo Castej\u00f3n reporta mareos y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta mareos y posee historial de Anemia."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta dolor abdominal y posee historial de Diabetes tipo 2."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta cefalea persistente y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta dolor abdominal y posee historial de Anemia."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta dolor tor\u00e1cico y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta tos seca y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta cefalea persistente y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta fatiga extrema y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta n\u00e1useas y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 2,
+    "chunk": "Paciente Benigno Acedo reporta mareos y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta n\u00e1useas y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta mareos y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta tos seca y posee historial de Diabetes tipo 2."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta dificultad respiratoria y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta dificultad respiratoria y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta dificultad respiratoria y posee historial de Anemia."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta dolor abdominal y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta fiebre intermitente y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta dificultad respiratoria y posee historial de Anemia."
+  },
+  {
+    "patient_id": 3,
+    "chunk": "Paciente Candelario Carmona reporta fatiga extrema y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta dolor tor\u00e1cico y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta dificultad respiratoria y posee historial de Asma."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta dificultad respiratoria y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta tos seca y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta visi\u00f3n borrosa y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta dolor abdominal y posee historial de Asma."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta fatiga extrema y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta dolor tor\u00e1cico y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta fatiga extrema y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 4,
+    "chunk": "Paciente Marisela Zabala reporta mareos y posee historial de Anemia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta visi\u00f3n borrosa y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta dolor tor\u00e1cico y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta fiebre intermitente y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta cefalea persistente y posee historial de Anemia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta cefalea persistente y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta dolor abdominal y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta n\u00e1useas y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta fatiga extrema y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta n\u00e1useas y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 5,
+    "chunk": "Paciente Amando Comas reporta fatiga extrema y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta fiebre intermitente y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta dificultad respiratoria y posee historial de Asma."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta tos seca y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta dolor tor\u00e1cico y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta n\u00e1useas y posee historial de Migra\u00f1a cr\u00f3nica."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta dolor tor\u00e1cico y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta visi\u00f3n borrosa y posee historial de Anemia."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta dolor abdominal y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta fiebre intermitente y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 6,
+    "chunk": "Paciente Macarena Ja\u00e9n reporta dolor abdominal y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta fiebre intermitente y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta dolor abdominal y posee historial de Diabetes tipo 2."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta mareos y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta cefalea persistente y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta dificultad respiratoria y posee historial de Asma."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta fatiga extrema y posee historial de Anemia."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta n\u00e1useas y posee historial de Asma."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta mareos y posee historial de Asma."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta n\u00e1useas y posee historial de Asma."
+  },
+  {
+    "patient_id": 7,
+    "chunk": "Paciente Ana Sof\u00eda Ju\u00e1rez reporta dificultad respiratoria y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta dolor tor\u00e1cico y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta tos seca y posee historial de Asma."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta dolor abdominal y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta mareos y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta visi\u00f3n borrosa y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta dolor abdominal y posee historial de Asma."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta cefalea persistente y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta cefalea persistente y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta n\u00e1useas y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 8,
+    "chunk": "Paciente Pancho Lloret reporta n\u00e1useas y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dolor tor\u00e1cico y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta mareos y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta cefalea persistente y posee historial de Anemia."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dolor abdominal y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dolor tor\u00e1cico y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dolor abdominal y posee historial de Asma."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta fatiga extrema y posee historial de Insuficiencia renal."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta visi\u00f3n borrosa y posee historial de Asma."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dificultad respiratoria y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 9,
+    "chunk": "Paciente Tania Alonso reporta dificultad respiratoria y posee historial de Gastritis."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta visi\u00f3n borrosa y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta dificultad respiratoria y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta n\u00e1useas y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta visi\u00f3n borrosa y posee historial de Lumbalgia."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta visi\u00f3n borrosa y posee historial de Diabetes tipo 2."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta mareos y posee historial de Arritmia."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta visi\u00f3n borrosa y posee historial de Hipertensi\u00f3n arterial."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta n\u00e1useas y posee historial de Asma."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta dificultad respiratoria y posee historial de COVID prolongado."
+  },
+  {
+    "patient_id": 10,
+    "chunk": "Paciente Fabiana Colomer reporta fatiga extrema y posee historial de Arritmia."
+  }
+]

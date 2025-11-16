@@ -16,7 +16,7 @@ DATA_DIR = Path("data")
 CHROMA_DIR = "chroma_db"
 COLLECTION_NAME = "historias_clinicas"
 
-LLM_MODEL = "qwen2.5:0.5b"
+LLM_MODEL = "gemma3:1b"
 EMBEDDINGS_MODEL = "nomic-embed-text"
 
 

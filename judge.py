@@ -4,7 +4,9 @@ Recibe un prompt, lo pasa a dos agentes, juzga sus respuestas y genera una respu
 """
 
 import os
+import sys
 import logging
+from pathlib import Path
 from typing import TypedDict, Annotated, Literal
 from dotenv import load_dotenv
 
@@ -18,6 +20,20 @@ load_dotenv()
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
+
+# Agregar el directorio RAG_agent al path para importar el módulo
+RAG_AGENT_DIR = Path(__file__).parent / "RAG_agent"
+if str(RAG_AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(RAG_AGENT_DIR))
+
+# Importar funciones del agente RAG
+try:
+    from RAG_agent import create_rag_chain
+    RAG_AGENT_AVAILABLE = True
+    LOG.info("Agente RAG importado exitosamente")
+except ImportError as e:
+    RAG_AGENT_AVAILABLE = False
+    LOG.warning(f"No se pudo importar el agente RAG: {e}. Se usará simulación.")
 
 # Configurar modelo LLM con Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -46,12 +62,53 @@ class JudgeState(TypedDict):
     step: str
 
 
+# Variable global para cachear la cadena RAG
+_rag_chain_cache = None
+
+def get_rag_chain():
+    """Obtiene o crea la cadena RAG (con cache)"""
+    global _rag_chain_cache
+    if _rag_chain_cache is None and RAG_AGENT_AVAILABLE:
+        try:
+            # Cambiar al directorio RAG_agent para que las rutas relativas funcionen
+            original_cwd = os.getcwd()
+            rag_agent_path = Path(__file__).parent / "RAG_agent"
+            os.chdir(rag_agent_path)
+            try:
+                _rag_chain_cache = create_rag_chain()
+                LOG.info("Cadena RAG creada exitosamente")
+            finally:
+                os.chdir(original_cwd)
+        except Exception as e:
+            LOG.error(f"Error al crear la cadena RAG: {e}")
+            _rag_chain_cache = None
+    return _rag_chain_cache
+
+
 # Funciones para llamar a los agentes (pueden ser reemplazadas por implementaciones reales)
 def call_agent_rag(prompt: str) -> str:
     """
-    Simula la llamada al agente RAG.
-    En producción, esto llamaría a tu implementación real del agente RAG.
+    Llama al agente RAG real si está disponible, sino usa simulación.
     """
+    # Intentar usar el agente RAG real
+    if RAG_AGENT_AVAILABLE:
+        try:
+            rag_chain = get_rag_chain()
+            if rag_chain is not None:
+                LOG.info("Llamando al agente RAG (real)...")
+                # Cambiar al directorio RAG_agent para ejecutar
+                original_cwd = os.getcwd()
+                rag_agent_path = Path(__file__).parent / "RAG_agent"
+                os.chdir(rag_agent_path)
+                try:
+                    response = rag_chain.invoke(prompt)
+                    return response
+                finally:
+                    os.chdir(original_cwd)
+        except Exception as e:
+            LOG.warning(f"Error al usar agente RAG real: {e}. Usando simulación.")
+    
+    # Fallback a simulación
     LOG.info("Llamando al agente RAG (simulado)...")
     
     # Respuestas simuladas realistas basadas en el tipo de pregunta
