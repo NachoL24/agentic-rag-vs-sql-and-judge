@@ -768,8 +768,8 @@ Redacta tu opinión clínica siguiendo las instrucciones del sistema, respondien
 
         return (
             f"{analysis}\n\n"
-            f"--- SCHEMA DISPONIBLE ---\n{schema_info}\n\n"
-            f"--- DETALLE DE SUBCONSULTAS (DEBUG) ---\n{debug_text}"
+            #f"--- SCHEMA DISPONIBLE ---\n{schema_info}\n\n"
+            #f"--- DETALLE DE SUBCONSULTAS (DEBUG) ---\n{debug_text}"
         )
 
 

@@ -36,15 +36,24 @@ def create_documents_from_seed(seed_data):
     documents = []
     
     for item in seed_data:
+        # El campo puede ser 'chunk' o 'text' dependiendo del formato
+        chunk = item.get('chunk') or item.get('text', '')
         patient_id = item.get('patient_id', 'unknown')
-        chunk = item.get('chunk', '')
+        item_type = item.get('type', 'unknown')
+        item_id = item.get('id', '')
         
-        # Crear un documento con metadata
+        # Obtener metadatos anidados si existen
+        nested_metadata = item.get('metadata', {})
+        
+        # Crear un documento con metadata completa
         doc = Document(
             page_content=chunk,
             metadata={
                 "source": f"patient_{patient_id}",
-                "patient_id": patient_id
+                "patient_id": patient_id,
+                "type": item_type,
+                "id": item_id,
+                **nested_metadata  # Incluir todos los metadatos anidados
             }
         )
         documents.append(doc)

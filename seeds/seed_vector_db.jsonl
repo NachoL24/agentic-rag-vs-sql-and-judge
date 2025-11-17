@@ -1,0 +1,110 @@
+{"id": "patient_1", "type": "patient", "patient_id": 1, "text": "Paciente Eliseo Castejón, 39 años, género M.", "metadata": {"nombre": "Eliseo", "apellido": "Castejón", "edad": 39, "genero": "M"}}
+{"id": "patient_2", "type": "patient", "patient_id": 2, "text": "Paciente Benigno Acedo, 65 años, género M.", "metadata": {"nombre": "Benigno", "apellido": "Acedo", "edad": 65, "genero": "M"}}
+{"id": "patient_3", "type": "patient", "patient_id": 3, "text": "Paciente Candelario Carmona, 84 años, género F.", "metadata": {"nombre": "Candelario", "apellido": "Carmona", "edad": 84, "genero": "F"}}
+{"id": "patient_4", "type": "patient", "patient_id": 4, "text": "Paciente Marisela Zabala, 38 años, género M.", "metadata": {"nombre": "Marisela", "apellido": "Zabala", "edad": 38, "genero": "M"}}
+{"id": "patient_5", "type": "patient", "patient_id": 5, "text": "Paciente Amando Comas, 51 años, género M.", "metadata": {"nombre": "Amando", "apellido": "Comas", "edad": 51, "genero": "M"}}
+{"id": "patient_6", "type": "patient", "patient_id": 6, "text": "Paciente Macarena Jaén, 74 años, género F.", "metadata": {"nombre": "Macarena", "apellido": "Jaén", "edad": 74, "genero": "F"}}
+{"id": "patient_7", "type": "patient", "patient_id": 7, "text": "Paciente Ana Sofía Juárez, 58 años, género F.", "metadata": {"nombre": "Ana Sofía", "apellido": "Juárez", "edad": 58, "genero": "F"}}
+{"id": "patient_8", "type": "patient", "patient_id": 8, "text": "Paciente Pancho Lloret, 48 años, género M.", "metadata": {"nombre": "Pancho", "apellido": "Lloret", "edad": 48, "genero": "M"}}
+{"id": "patient_9", "type": "patient", "patient_id": 9, "text": "Paciente Tania Alonso, 44 años, género F.", "metadata": {"nombre": "Tania", "apellido": "Alonso", "edad": 44, "genero": "F"}}
+{"id": "patient_10", "type": "patient", "patient_id": 10, "text": "Paciente Fabiana Colomer, 88 años, género F.", "metadata": {"nombre": "Fabiana", "apellido": "Colomer", "edad": 88, "genero": "F"}}
+{"id": "note_100", "type": "clinical_note", "patient_id": 1, "text": "Paciente Eliseo Castejón presenta fatiga extrema, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_101", "type": "clinical_note", "patient_id": 1, "text": "Paciente Eliseo Castejón presenta mareos, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_102", "type": "clinical_note", "patient_id": 1, "text": "Paciente Eliseo Castejón presenta tos seca, con antecedentes de Migraña crónica.", "metadata": {"antecedente": "Migraña crónica"}}
+{"id": "note_103", "type": "clinical_note", "patient_id": 1, "text": "Paciente Eliseo Castejón presenta tos seca, con antecedentes de Hipertensión arterial.", "metadata": {"antecedente": "Hipertensión arterial"}}
+{"id": "note_104", "type": "clinical_note", "patient_id": 1, "text": "Paciente Eliseo Castejón presenta dolor abdominal, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_200", "type": "clinical_note", "patient_id": 2, "text": "Paciente Benigno Acedo presenta dolor abdominal, con antecedentes de Lumbalgia.", "metadata": {"antecedente": "Lumbalgia"}}
+{"id": "note_201", "type": "clinical_note", "patient_id": 2, "text": "Paciente Benigno Acedo presenta cefalea persistente, con antecedentes de Diabetes tipo 2.", "metadata": {"antecedente": "Diabetes tipo 2"}}
+{"id": "note_202", "type": "clinical_note", "patient_id": 2, "text": "Paciente Benigno Acedo presenta náuseas, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_203", "type": "clinical_note", "patient_id": 2, "text": "Paciente Benigno Acedo presenta tos seca, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_204", "type": "clinical_note", "patient_id": 2, "text": "Paciente Benigno Acedo presenta fiebre intermitente, con antecedentes de Arritmia.", "metadata": {"antecedente": "Arritmia"}}
+{"id": "note_300", "type": "clinical_note", "patient_id": 3, "text": "Paciente Candelario Carmona presenta fiebre intermitente, con antecedentes de Insuficiencia renal.", "metadata": {"antecedente": "Insuficiencia renal"}}
+{"id": "note_301", "type": "clinical_note", "patient_id": 3, "text": "Paciente Candelario Carmona presenta visión borrosa, con antecedentes de Lumbalgia.", "metadata": {"antecedente": "Lumbalgia"}}
+{"id": "note_302", "type": "clinical_note", "patient_id": 3, "text": "Paciente Candelario Carmona presenta visión borrosa, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_303", "type": "clinical_note", "patient_id": 3, "text": "Paciente Candelario Carmona presenta visión borrosa, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_304", "type": "clinical_note", "patient_id": 3, "text": "Paciente Candelario Carmona presenta náuseas, con antecedentes de Insuficiencia renal.", "metadata": {"antecedente": "Insuficiencia renal"}}
+{"id": "note_400", "type": "clinical_note", "patient_id": 4, "text": "Paciente Marisela Zabala presenta dificultad respiratoria, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_401", "type": "clinical_note", "patient_id": 4, "text": "Paciente Marisela Zabala presenta cefalea persistente, con antecedentes de Arritmia.", "metadata": {"antecedente": "Arritmia"}}
+{"id": "note_402", "type": "clinical_note", "patient_id": 4, "text": "Paciente Marisela Zabala presenta cefalea persistente, con antecedentes de COVID prolongado.", "metadata": {"antecedente": "COVID prolongado"}}
+{"id": "note_403", "type": "clinical_note", "patient_id": 4, "text": "Paciente Marisela Zabala presenta dolor torácico, con antecedentes de Diabetes tipo 2.", "metadata": {"antecedente": "Diabetes tipo 2"}}
+{"id": "note_404", "type": "clinical_note", "patient_id": 4, "text": "Paciente Marisela Zabala presenta visión borrosa, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_500", "type": "clinical_note", "patient_id": 5, "text": "Paciente Amando Comas presenta dificultad respiratoria, con antecedentes de Diabetes tipo 2.", "metadata": {"antecedente": "Diabetes tipo 2"}}
+{"id": "note_501", "type": "clinical_note", "patient_id": 5, "text": "Paciente Amando Comas presenta dificultad respiratoria, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_502", "type": "clinical_note", "patient_id": 5, "text": "Paciente Amando Comas presenta dolor torácico, con antecedentes de Diabetes tipo 2.", "metadata": {"antecedente": "Diabetes tipo 2"}}
+{"id": "note_503", "type": "clinical_note", "patient_id": 5, "text": "Paciente Amando Comas presenta dificultad respiratoria, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_504", "type": "clinical_note", "patient_id": 5, "text": "Paciente Amando Comas presenta fatiga extrema, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_600", "type": "clinical_note", "patient_id": 6, "text": "Paciente Macarena Jaén presenta visión borrosa, con antecedentes de Arritmia.", "metadata": {"antecedente": "Arritmia"}}
+{"id": "note_601", "type": "clinical_note", "patient_id": 6, "text": "Paciente Macarena Jaén presenta visión borrosa, con antecedentes de Arritmia.", "metadata": {"antecedente": "Arritmia"}}
+{"id": "note_602", "type": "clinical_note", "patient_id": 6, "text": "Paciente Macarena Jaén presenta náuseas, con antecedentes de COVID prolongado.", "metadata": {"antecedente": "COVID prolongado"}}
+{"id": "note_603", "type": "clinical_note", "patient_id": 6, "text": "Paciente Macarena Jaén presenta dolor abdominal, con antecedentes de COVID prolongado.", "metadata": {"antecedente": "COVID prolongado"}}
+{"id": "note_604", "type": "clinical_note", "patient_id": 6, "text": "Paciente Macarena Jaén presenta visión borrosa, con antecedentes de Arritmia.", "metadata": {"antecedente": "Arritmia"}}
+{"id": "note_700", "type": "clinical_note", "patient_id": 7, "text": "Paciente Ana Sofía Juárez presenta dificultad respiratoria, con antecedentes de Diabetes tipo 2.", "metadata": {"antecedente": "Diabetes tipo 2"}}
+{"id": "note_701", "type": "clinical_note", "patient_id": 7, "text": "Paciente Ana Sofía Juárez presenta fatiga extrema, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_702", "type": "clinical_note", "patient_id": 7, "text": "Paciente Ana Sofía Juárez presenta visión borrosa, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_703", "type": "clinical_note", "patient_id": 7, "text": "Paciente Ana Sofía Juárez presenta cefalea persistente, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_704", "type": "clinical_note", "patient_id": 7, "text": "Paciente Ana Sofía Juárez presenta mareos, con antecedentes de Hipertensión arterial.", "metadata": {"antecedente": "Hipertensión arterial"}}
+{"id": "note_800", "type": "clinical_note", "patient_id": 8, "text": "Paciente Pancho Lloret presenta fiebre intermitente, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_801", "type": "clinical_note", "patient_id": 8, "text": "Paciente Pancho Lloret presenta fiebre intermitente, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_802", "type": "clinical_note", "patient_id": 8, "text": "Paciente Pancho Lloret presenta mareos, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_803", "type": "clinical_note", "patient_id": 8, "text": "Paciente Pancho Lloret presenta mareos, con antecedentes de COVID prolongado.", "metadata": {"antecedente": "COVID prolongado"}}
+{"id": "note_804", "type": "clinical_note", "patient_id": 8, "text": "Paciente Pancho Lloret presenta cefalea persistente, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_900", "type": "clinical_note", "patient_id": 9, "text": "Paciente Tania Alonso presenta dolor abdominal, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_901", "type": "clinical_note", "patient_id": 9, "text": "Paciente Tania Alonso presenta visión borrosa, con antecedentes de Anemia.", "metadata": {"antecedente": "Anemia"}}
+{"id": "note_902", "type": "clinical_note", "patient_id": 9, "text": "Paciente Tania Alonso presenta dolor abdominal, con antecedentes de COVID prolongado.", "metadata": {"antecedente": "COVID prolongado"}}
+{"id": "note_903", "type": "clinical_note", "patient_id": 9, "text": "Paciente Tania Alonso presenta mareos, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_904", "type": "clinical_note", "patient_id": 9, "text": "Paciente Tania Alonso presenta náuseas, con antecedentes de Lumbalgia.", "metadata": {"antecedente": "Lumbalgia"}}
+{"id": "note_1000", "type": "clinical_note", "patient_id": 10, "text": "Paciente Fabiana Colomer presenta mareos, con antecedentes de Insuficiencia renal.", "metadata": {"antecedente": "Insuficiencia renal"}}
+{"id": "note_1001", "type": "clinical_note", "patient_id": 10, "text": "Paciente Fabiana Colomer presenta fatiga extrema, con antecedentes de Migraña crónica.", "metadata": {"antecedente": "Migraña crónica"}}
+{"id": "note_1002", "type": "clinical_note", "patient_id": 10, "text": "Paciente Fabiana Colomer presenta náuseas, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "note_1003", "type": "clinical_note", "patient_id": 10, "text": "Paciente Fabiana Colomer presenta dificultad respiratoria, con antecedentes de Gastritis.", "metadata": {"antecedente": "Gastritis"}}
+{"id": "note_1004", "type": "clinical_note", "patient_id": 10, "text": "Paciente Fabiana Colomer presenta dolor abdominal, con antecedentes de Asma.", "metadata": {"antecedente": "Asma"}}
+{"id": "diag_100", "type": "diagnosis", "patient_id": 1, "text": "Diagnóstico de Asma realizado el 2025-07-22.", "metadata": {"diagnostico": "Asma", "fecha": "2025-07-22"}}
+{"id": "diag_101", "type": "diagnosis", "patient_id": 1, "text": "Diagnóstico de Hipertensión arterial realizado el 2025-09-30.", "metadata": {"diagnostico": "Hipertensión arterial", "fecha": "2025-09-30"}}
+{"id": "diag_102", "type": "diagnosis", "patient_id": 1, "text": "Diagnóstico de Gastritis realizado el 2024-06-22.", "metadata": {"diagnostico": "Gastritis", "fecha": "2024-06-22"}}
+{"id": "diag_103", "type": "diagnosis", "patient_id": 1, "text": "Diagnóstico de Anemia realizado el 2023-11-20.", "metadata": {"diagnostico": "Anemia", "fecha": "2023-11-20"}}
+{"id": "diag_104", "type": "diagnosis", "patient_id": 1, "text": "Diagnóstico de Migraña crónica realizado el 2025-04-28.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2025-04-28"}}
+{"id": "diag_200", "type": "diagnosis", "patient_id": 2, "text": "Diagnóstico de Asma realizado el 2025-01-23.", "metadata": {"diagnostico": "Asma", "fecha": "2025-01-23"}}
+{"id": "diag_201", "type": "diagnosis", "patient_id": 2, "text": "Diagnóstico de Asma realizado el 2024-12-24.", "metadata": {"diagnostico": "Asma", "fecha": "2024-12-24"}}
+{"id": "diag_202", "type": "diagnosis", "patient_id": 2, "text": "Diagnóstico de Migraña crónica realizado el 2024-01-19.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2024-01-19"}}
+{"id": "diag_203", "type": "diagnosis", "patient_id": 2, "text": "Diagnóstico de Gastritis realizado el 2024-12-12.", "metadata": {"diagnostico": "Gastritis", "fecha": "2024-12-12"}}
+{"id": "diag_204", "type": "diagnosis", "patient_id": 2, "text": "Diagnóstico de Gastritis realizado el 2024-09-19.", "metadata": {"diagnostico": "Gastritis", "fecha": "2024-09-19"}}
+{"id": "diag_300", "type": "diagnosis", "patient_id": 3, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-08-07.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-08-07"}}
+{"id": "diag_301", "type": "diagnosis", "patient_id": 3, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-01-02.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-01-02"}}
+{"id": "diag_302", "type": "diagnosis", "patient_id": 3, "text": "Diagnóstico de Arritmia realizado el 2024-04-27.", "metadata": {"diagnostico": "Arritmia", "fecha": "2024-04-27"}}
+{"id": "diag_303", "type": "diagnosis", "patient_id": 3, "text": "Diagnóstico de Lumbalgia realizado el 2025-07-18.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2025-07-18"}}
+{"id": "diag_304", "type": "diagnosis", "patient_id": 3, "text": "Diagnóstico de Migraña crónica realizado el 2024-01-04.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2024-01-04"}}
+{"id": "diag_400", "type": "diagnosis", "patient_id": 4, "text": "Diagnóstico de Gastritis realizado el 2024-10-20.", "metadata": {"diagnostico": "Gastritis", "fecha": "2024-10-20"}}
+{"id": "diag_401", "type": "diagnosis", "patient_id": 4, "text": "Diagnóstico de Insuficiencia renal realizado el 2025-02-01.", "metadata": {"diagnostico": "Insuficiencia renal", "fecha": "2025-02-01"}}
+{"id": "diag_402", "type": "diagnosis", "patient_id": 4, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-05-06.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-05-06"}}
+{"id": "diag_403", "type": "diagnosis", "patient_id": 4, "text": "Diagnóstico de Gastritis realizado el 2025-08-31.", "metadata": {"diagnostico": "Gastritis", "fecha": "2025-08-31"}}
+{"id": "diag_404", "type": "diagnosis", "patient_id": 4, "text": "Diagnóstico de Migraña crónica realizado el 2024-10-12.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2024-10-12"}}
+{"id": "diag_500", "type": "diagnosis", "patient_id": 5, "text": "Diagnóstico de Anemia realizado el 2025-08-11.", "metadata": {"diagnostico": "Anemia", "fecha": "2025-08-11"}}
+{"id": "diag_501", "type": "diagnosis", "patient_id": 5, "text": "Diagnóstico de Lumbalgia realizado el 2025-02-17.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2025-02-17"}}
+{"id": "diag_502", "type": "diagnosis", "patient_id": 5, "text": "Diagnóstico de Anemia realizado el 2024-12-05.", "metadata": {"diagnostico": "Anemia", "fecha": "2024-12-05"}}
+{"id": "diag_503", "type": "diagnosis", "patient_id": 5, "text": "Diagnóstico de Migraña crónica realizado el 2024-10-09.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2024-10-09"}}
+{"id": "diag_504", "type": "diagnosis", "patient_id": 5, "text": "Diagnóstico de Anemia realizado el 2024-03-31.", "metadata": {"diagnostico": "Anemia", "fecha": "2024-03-31"}}
+{"id": "diag_600", "type": "diagnosis", "patient_id": 6, "text": "Diagnóstico de Asma realizado el 2024-08-17.", "metadata": {"diagnostico": "Asma", "fecha": "2024-08-17"}}
+{"id": "diag_601", "type": "diagnosis", "patient_id": 6, "text": "Diagnóstico de Insuficiencia renal realizado el 2025-05-13.", "metadata": {"diagnostico": "Insuficiencia renal", "fecha": "2025-05-13"}}
+{"id": "diag_602", "type": "diagnosis", "patient_id": 6, "text": "Diagnóstico de Lumbalgia realizado el 2025-09-12.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2025-09-12"}}
+{"id": "diag_603", "type": "diagnosis", "patient_id": 6, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2024-12-02.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2024-12-02"}}
+{"id": "diag_604", "type": "diagnosis", "patient_id": 6, "text": "Diagnóstico de Lumbalgia realizado el 2023-12-17.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2023-12-17"}}
+{"id": "diag_700", "type": "diagnosis", "patient_id": 7, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-05-23.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-05-23"}}
+{"id": "diag_701", "type": "diagnosis", "patient_id": 7, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-01-01.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-01-01"}}
+{"id": "diag_702", "type": "diagnosis", "patient_id": 7, "text": "Diagnóstico de Arritmia realizado el 2023-12-19.", "metadata": {"diagnostico": "Arritmia", "fecha": "2023-12-19"}}
+{"id": "diag_703", "type": "diagnosis", "patient_id": 7, "text": "Diagnóstico de Insuficiencia renal realizado el 2024-11-08.", "metadata": {"diagnostico": "Insuficiencia renal", "fecha": "2024-11-08"}}
+{"id": "diag_704", "type": "diagnosis", "patient_id": 7, "text": "Diagnóstico de Gastritis realizado el 2025-08-03.", "metadata": {"diagnostico": "Gastritis", "fecha": "2025-08-03"}}
+{"id": "diag_800", "type": "diagnosis", "patient_id": 8, "text": "Diagnóstico de Anemia realizado el 2025-06-12.", "metadata": {"diagnostico": "Anemia", "fecha": "2025-06-12"}}
+{"id": "diag_801", "type": "diagnosis", "patient_id": 8, "text": "Diagnóstico de Migraña crónica realizado el 2025-02-18.", "metadata": {"diagnostico": "Migraña crónica", "fecha": "2025-02-18"}}
+{"id": "diag_802", "type": "diagnosis", "patient_id": 8, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2025-09-30.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2025-09-30"}}
+{"id": "diag_803", "type": "diagnosis", "patient_id": 8, "text": "Diagnóstico de Asma realizado el 2024-08-22.", "metadata": {"diagnostico": "Asma", "fecha": "2024-08-22"}}
+{"id": "diag_804", "type": "diagnosis", "patient_id": 8, "text": "Diagnóstico de Insuficiencia renal realizado el 2024-07-09.", "metadata": {"diagnostico": "Insuficiencia renal", "fecha": "2024-07-09"}}
+{"id": "diag_900", "type": "diagnosis", "patient_id": 9, "text": "Diagnóstico de Lumbalgia realizado el 2024-03-27.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2024-03-27"}}
+{"id": "diag_901", "type": "diagnosis", "patient_id": 9, "text": "Diagnóstico de Arritmia realizado el 2025-07-02.", "metadata": {"diagnostico": "Arritmia", "fecha": "2025-07-02"}}
+{"id": "diag_902", "type": "diagnosis", "patient_id": 9, "text": "Diagnóstico de Anemia realizado el 2024-08-11.", "metadata": {"diagnostico": "Anemia", "fecha": "2024-08-11"}}
+{"id": "diag_903", "type": "diagnosis", "patient_id": 9, "text": "Diagnóstico de Asma realizado el 2024-03-29.", "metadata": {"diagnostico": "Asma", "fecha": "2024-03-29"}}
+{"id": "diag_904", "type": "diagnosis", "patient_id": 9, "text": "Diagnóstico de COVID prolongado realizado el 2024-04-17.", "metadata": {"diagnostico": "COVID prolongado", "fecha": "2024-04-17"}}
+{"id": "diag_1000", "type": "diagnosis", "patient_id": 10, "text": "Diagnóstico de Lumbalgia realizado el 2024-10-22.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2024-10-22"}}
+{"id": "diag_1001", "type": "diagnosis", "patient_id": 10, "text": "Diagnóstico de Diabetes tipo 2 realizado el 2024-01-25.", "metadata": {"diagnostico": "Diabetes tipo 2", "fecha": "2024-01-25"}}
+{"id": "diag_1002", "type": "diagnosis", "patient_id": 10, "text": "Diagnóstico de Asma realizado el 2025-04-12.", "metadata": {"diagnostico": "Asma", "fecha": "2025-04-12"}}
+{"id": "diag_1003", "type": "diagnosis", "patient_id": 10, "text": "Diagnóstico de Arritmia realizado el 2025-03-12.", "metadata": {"diagnostico": "Arritmia", "fecha": "2025-03-12"}}
+{"id": "diag_1004", "type": "diagnosis", "patient_id": 10, "text": "Diagnóstico de Lumbalgia realizado el 2025-03-27.", "metadata": {"diagnostico": "Lumbalgia", "fecha": "2025-03-27"}}

@@ -110,14 +110,38 @@ class RAGAgent_Optimized:
         docs = []
 
         for item in data:
+            # El campo puede ser 'chunk' o 'text' dependiendo del formato
+            content = item.get("chunk") or item.get("text", "")
+            patient_id = item.get("patient_id")
+            item_type = item.get("type", "nota")
+            item_id = item.get("id", "")
+            
+            # Obtener metadatos anidados si existen
+            nested_metadata = item.get("metadata", {})
+            
+            # Extraer fecha de los metadatos anidados si existe
+            fecha = nested_metadata.get("fecha", None)
+            
+            # Construir metadata completa
+            metadata = {
+                "patient_id": patient_id,
+                "tipo": item_type,
+                "id": item_id,
+                "seccion": nested_metadata.get("seccion", ""),
+            }
+            
+            # Agregar fecha si existe
+            if fecha:
+                metadata["fecha"] = fecha
+            
+            # Incluir todos los metadatos anidados adicionales
+            for key, value in nested_metadata.items():
+                if key not in ["seccion", "fecha"]:  # Ya los agregamos arriba
+                    metadata[key] = value
+            
             docs.append(Document(
-                page_content=item.get("chunk", ""),
-                metadata={
-                    "patient_id": item.get("patient_id"),
-                    "seccion": item.get("seccion", ""),
-                    "tipo": item.get("tipo", "nota"),
-                    "fecha": item.get("fecha", None),
-                }
+                page_content=content,
+                metadata=metadata
             ))
 
         CHROMA_DIR.mkdir(exist_ok=True)
