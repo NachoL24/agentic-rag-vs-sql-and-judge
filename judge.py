@@ -271,22 +271,37 @@ INSTRUCCIONES:
 
 IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues texto adicional antes o después del JSON.
 
-Formato JSON requerido:
+EVALÚA OBJETIVAMENTE: No asumas que un agente es mejor que el otro. Evalúa cada respuesta según su mérito real.
+
+Formato JSON requerido (ejemplos de diferentes escenarios posibles):
+- Si agent1 es mejor: {{"winner": "agent1", "agent1_score": 0.85, "agent2_score": 0.60, ...}}
+- Si agent2 es mejor: {{"winner": "agent2", "agent1_score": 0.55, "agent2_score": 0.90, ...}}
+- Si hay empate: {{"winner": "tie", "agent1_score": 0.75, "agent2_score": 0.75, ...}}
+
+Estructura del JSON:
 {{
-    "winner": "agent1",
-    "agent1_score": 0.85,
-    "agent2_score": 0.60,
-    "reasoning": "La respuesta del agente 1 es más completa porque...",
-    "agent1_strengths": ["fortaleza 1", "fortaleza 2"],
-    "agent2_strengths": ["fortaleza 1"],
-    "agent1_weaknesses": ["debilidad 1"],
-    "agent2_weaknesses": ["debilidad 1", "debilidad 2"]
+    "winner": "agent1" | "agent2" | "tie",
+    "agent1_score": 0.0-1.0,
+    "agent2_score": 0.0-1.0,
+    "reasoning": "Explicación detallada y objetiva de por qué elegiste este ganador o empate",
+    "agent1_strengths": ["lista de fortalezas del agente 1"],
+    "agent2_strengths": ["lista de fortalezas del agente 2"],
+    "agent1_weaknesses": ["lista de debilidades del agente 1"],
+    "agent2_weaknesses": ["lista de debilidades del agente 2"]
 }}
 """
     
     messages = [
         SystemMessage(content="""Eres un evaluador experto de sistemas de información médica. 
 Tu tarea es evaluar respuestas de agentes de IA que procesan datos de historias clínicas.
+
+REGLAS CRÍTICAS:
+- Evalúa OBJETIVAMENTE cada respuesta según su mérito real
+- NO asumas que un agente es siempre mejor que el otro
+- El ganador puede ser "agent1", "agent2" o "tie" dependiendo de la calidad real de las respuestas
+- Asigna scores justos basados en: precisión, completitud, relevancia y utilidad
+- Si una respuesta es claramente mejor, así debe reflejarse en los scores y el ganador
+
 Siempre respondes ÚNICAMENTE con un objeto JSON válido, sin texto adicional.
 El JSON debe tener exactamente estos campos: winner, agent1_score, agent2_score, reasoning, agent1_strengths, agent2_strengths, agent1_weaknesses, agent2_weaknesses."""),
         HumanMessage(content=judge_prompt)
