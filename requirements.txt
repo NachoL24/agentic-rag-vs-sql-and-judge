@@ -1,9 +1,14 @@
 langchain>=0.1.0
 langchain-ollama>=0.1.0
+langchain-community
+langchain-chroma
+langchain-text-splitters
 langgraph>=0.0.20
 langchain-core>=0.1.0
 python-dotenv>=1.0.0
 typing-extensions>=4.8.0
 pymysql>=1.0.0
 sqlalchemy>=2.0.0
+chromadb
+pypdf
 

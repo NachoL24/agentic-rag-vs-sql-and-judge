@@ -25,14 +25,32 @@ pip install -r requirements.txt
 3. Asegurarse de que Ollama esté corriendo:
 ```bash
 # Instalar Ollama desde https://ollama.ai
-# Descargar un modelo (ejemplo):
-ollama pull llama3.1:8b
+# Descargar los modelos necesarios:
+ollama pull llama3.1:8b          # Para el juez
+ollama pull qwen2.5:0.5b         # Para el agente RAG
+ollama pull nomic-embed-text     # Para los embeddings
 ```
 
-4. (Opcional) Configurar variables de entorno en `.env`:
+4. Cargar los datos en la base de datos vectorial:
+```bash
+# Ejecutar el script para cargar los datos de vector_seed.json
+python load_vector_data.py
+```
+
+**Nota**: Si necesitas borrar y recrear la base de datos vectorial:
+```bash
+# Borrar la base de datos existente
+python clear_vector_db.py
+
+# Luego recrearla
+python load_vector_data.py
+```
+
+5. (Opcional) Configurar variables de entorno en `.env`:
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1:8b
+OLLAMA_HOST=http://localhost:11434
 ```
 
 ### Uso
@@ -51,6 +69,18 @@ from judge import judge_agents
 result = judge_agents("Tu prompt aquí")
 print(result['final_response'])
 ```
+
+### Integración del Agente RAG
+
+El agente juez ahora está integrado con el agente RAG real ubicado en `RAG_agent/RAG_agent.py`. El sistema:
+
+1. **Intenta usar el agente RAG real** si está disponible y la base de datos vectorial existe
+2. **Usa respuestas simuladas** como fallback si el agente RAG no está disponible
+
+El agente RAG utiliza:
+- Base de datos vectorial ChromaDB con datos de `seeds/vector_seed.json`
+- Modelo de embeddings: `nomic-embed-text`
+- Modelo LLM: `qwen2.5:0.5b`
 
 ### Personalización
 
