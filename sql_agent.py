@@ -114,18 +114,25 @@ def _validate_with_explain(db, sql: str) -> Tuple[bool, Optional[str]]:
     Intenta EXPLAIN <sql>.
     Soporta SQLAlchemy Engine o conexión DB-API.
     Si no hay db o falla el modo, retorna (True, None) para no bloquear.
+
+    IMPORTANTE:
+    - Escapamos '%' -> '%%' para evitar que el driver DB-API (pymysql)
+      intente interpretar los '%' de los LIKE como placeholders de formato.
     """
     if db is None:
         return True, None
 
-    stmt = f"EXPLAIN {sql}"
+    # Escapar '%' para que el driver no intente hacer interpolación de formato
+    safe_sql = sql.replace("%", "%%")
+    stmt = f"EXPLAIN {safe_sql}"
+
     try:
         # SQLAlchemy Engine
         if hasattr(db, "connect"):
             with db.connect() as conn:
                 conn.exec_driver_sql(stmt)
             return True, None
-        # DB-API
+        # DB-API directo
         if hasattr(db, "cursor"):
             cur = db.cursor()
             cur.execute(stmt)
@@ -133,7 +140,10 @@ def _validate_with_explain(db, sql: str) -> Tuple[bool, Optional[str]]:
             return True, None
     except Exception as e:
         return False, str(e)
+
     return True, None
+
+
 
 def _build_schema_text(schema: dict) -> str:
     """
@@ -615,17 +625,10 @@ TU TAREA:
 2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
 
 ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
-1) Resumen del hallazgo:
-   - Resume de forma clínica qué muestran los datos en conjunto (y si hay subconsultas sin datos).
-2) Respuesta a la pregunta:
-   - Contesta directamente la pregunta original, usando solo los datos disponibles.
-3) Interpretación clínica:
-   - Qué implican estos hallazgos (prevalencia, riesgo, carga de enfermedad, etc.), dentro de los límites de la información disponible.
-4) Recomendaciones / próximos pasos:
-   - Qué podría considerarse en términos de seguimiento, estudios complementarios, prevención, etc.
-5) Limitaciones:
-   - Destaca explícitamente si hay subconsultas sin datos o con errores y cómo eso limita la interpretación.
-   - Recalca que la decisión final debe basarse en la valoración clínica individual de los pacientes.
+    1) Resumen del hallazgo:
+       - Interpreta brevemente el resultado en términos clínicos.
+    2) Respuesta a la pregunta:
+       - Debes responder la pregunta con una opinión clínica razonada, basándote en los datos numéricos disponibles y tu conocimiento médico general.
 
 REGLAS DE SEGURIDAD CLÍNICA:
 - No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
