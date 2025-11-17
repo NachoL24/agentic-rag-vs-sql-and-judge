@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 import re
 from typing import Dict, Tuple, Set, Optional
 from textwrap import dedent
+import json  # NUEVO
+
 
 
 load_dotenv()
@@ -150,67 +152,56 @@ def _build_schema_text(schema: dict) -> str:
     return "\n".join(parts)
 
 def _build_sql_prompt(schema_text: str, user_query: str) -> str:
-    examples = dedent("""
-    ### EJEMPLOS (few-shot)
-
-    Pregunta: "Pacientes con diagnóstico de diabetes en los últimos 12 meses"
-    Interpretación: Filtrar diagnósticos por texto 'diabetes' y fecha en el último año; devolver pacientes únicos.
-    Tablas relevantes: patients, diagnoses
-    Columnas relevantes: patients.id, patients.nombre, diagnoses.patient_id, diagnoses.diagnostico, diagnoses.fecha
-    Verificación de relaciones: diagnoses.patient_id = patients.id
-    SQL final:
-    SELECT DISTINCT p.id, p.nombre
-    FROM patients p
-    JOIN diagnoses d ON d.patient_id = p.id
-    WHERE d.diagnostico LIKE '%diabetes%'
-      AND d.fecha >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH);
-
-    Pregunta: "¿Cuántos pacientes tuvieron más de 2 diagnósticos en el último año?"
-    Interpretación: Contar pacientes con COUNT(d.id) > 2 desde fecha actual - 1 año.
-    Tablas relevantes: patients, diagnoses
-    Columnas relevantes: patients.id, diagnoses.id, diagnoses.fecha
-    Verificación de relaciones: diagnoses.patient_id = patients.id
-    SQL final:
-    SELECT COUNT(DISTINCT p.id)
-    FROM patients p
-    JOIN diagnoses d ON d.patient_id = p.id
-    WHERE d.fecha >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-    GROUP BY p.id
-    HAVING COUNT(d.id) > 2;
-    """).strip()
-
     prompt = f"""
 Eres un generador de SQL para MySQL extremadamente estricto.
-Tu única tarea es producir SQL válido basado EXCLUSIVAMENTE en el esquema provisto.
-Responde **SIEMPRE** en este formato y termina con "SQL final:" seguido únicamente del SQL.
+Tu única tarea es producir UNA sola sentencia SELECT válida basada EXCLUSIVAMENTE en el esquema provisto.
 
 ### ESQUEMA AUTORIZADO
 {schema_text}
 
-### REGLAS
+### REGLAS GENERALES (OBLIGATORIAS)
 - Prohibido inventar tablas o columnas.
-- Usa SOLO tablas/columnas del esquema.
-- Dialecto: MySQL. Fechas con CURDATE(), DATE_SUB, INTERVAL, etc.
-- Cuando el usuario mencione una enfermedad/síntoma/condición, búscala en diagnoses.diagnostico con:
-  WHERE d.diagnostico LIKE '%término%'
-- Si no estás 100% seguro, responde un SQL que devuelva 0 filas pero sea sintácticamente válido.
-- Solo una sentencia, sin punto y coma final, y SOLO SELECT (no DDL/DML).
-- Si la pregunta pide cantidades (cuántos/cantidad/total/contar), usar COUNT(...) apropiado.
-- Para "cuántos pacientes", utilizar COUNT(DISTINCT p.id) cuando corresponda.
+- Usa SOLO tablas y columnas que aparezcan en el esquema autorizado.
+- Dialecto: MySQL. Puedes usar funciones estándar (CURDATE(), DATE_SUB, INTERVAL, etc.) si son necesarias.
+- La sentencia DEBE ser únicamente un SELECT (o WITH ... SELECT).
+- No incluyas comentarios, ni explicaciones, ni código adicional.
+- No uses punto y coma final.
+- No generes más de una sentencia.
 
-### PASOS (escribe SIEMPRE antes del SQL final)
-1) Interpretación:
-2) Tablas relevantes:
-3) Columnas relevantes:
-4) Verificación de relaciones:
-5) SQL final:
+### REGLAS PARA ENFERMEDADES / DIAGNÓSTICOS
+- Cuando el usuario mencione una enfermedad, síntoma o condición (por ejemplo "diabetes", "asma"):
+  - Debes filtrarla utilizando la columna diagnoses.diagnostico con un patrón LIKE:
+    WHERE d.diagnostico LIKE '%término%'
 
-{examples}
+### REGLAS ESPECÍFICAS PARA GÉNERO
+- La ÚNICA columna para género/sexo en este esquema es 'genero' de la tabla 'patients'.
+- NO inventes columnas como 'gender', 'sexo' u otras.
+- Cuando el usuario hable de:
+  - "hombres", "varones" → filtra con p.genero = 'M'
+  - "mujeres" → filtra con p.genero = 'F'
+
+### REGLAS PARA CANTIDADES
+- Si la pregunta pide cantidades (cuántos/cantidad/total/contar):
+  - Para "¿cuántos pacientes...?" utiliza COUNT(DISTINCT p.id) siempre que estés contando pacientes.
+  - No calcules proporciones, porcentajes ni promedios a menos que el usuario los pida explícitamente.
+- Si hay duda, devuleve un SELECT que sea sintácticamente válido, aunque devuelva 0 filas.
+
+### FORMATO DE RESPUESTA (ESTRICTO)
+Debes responder SIEMPRE en este formato de texto plano:
+
+Interpretación: <breve explicación en una sola línea>
+Tablas relevantes: <lista de tablas usadas>
+Columnas relevantes: <lista de columnas usadas>
+Verificación de relaciones: <explicación breve de los JOINs>
+SQL final: <AQUÍ SOLO LA SENTENCIA SELECT SIN PUNTO Y COMA>
+
+No añadas nada más antes o después.
 
 ### PREGUNTA DEL USUARIO
 {user_query}
 """.strip()
     return prompt
+
 
 
 def _normalize_colname(c: str) -> str:
@@ -368,6 +359,124 @@ class SQLAgent:
             LOG.error(f"Error obteniendo schema: {e}")
             return {}
 
+    def plan_data_requirements(self, query: str) -> Dict[str, Any]:
+        """
+        Usa el LLM para desglosar la pregunta clínica en varias subconsultas de datos.
+        Devuelve un dict con formato:
+        {
+          "subqueries": [
+            {
+              "id": "string",
+              "description": "para qué sirve esta subconsulta",
+              "question": "pregunta en lenguaje natural para generar SQL"
+            },
+            ...
+          ]
+        }
+        Si falla, devuelve un plan mínimo con solo la pregunta original.
+        """
+        if not LLM:
+            # Sin LLM → plan trivial
+            return {
+                "subqueries": [
+                    {
+                        "id": "main",
+                        "description": "Consulta principal",
+                        "question": query,
+                    }
+                ]
+            }
+
+        schema_text = _build_schema_text(self.schema)
+
+        system_prompt = (
+            "Eres un médico experto y analista de datos clínicos. "
+            "Tu única tarea es DESGLOSAR una pregunta clínica en una o varias subconsultas de datos, "
+            "SIN cambiar el sentido clínico de la pregunta original. "
+            "NO generas SQL, solo un plan estructurado."
+        )
+
+        user_prompt = f"""
+Pregunta clínica del colega:
+{query}
+
+Esquema de la base de datos (para que sepas qué datos existen):
+{schema_text}
+
+REGLAS CLÍNICAS Y DE DESGLOSE (OBLIGATORIAS):
+- NO cambies la intención de la pregunta original.
+  - Si el colega pide "¿cuántos...?", las subconsultas también deben ser de tipo "¿cuántos...?".
+  - NO reemplaces "¿cuántos...?" por "¿qué proporción...?" ni por "¿cuál es el promedio...?".
+- Si el colega hace varias preguntas en la misma frase, genera UNA subconsulta independiente por cada pregunta o métrica explícita.
+- Si se mencionan enfermedades (por ejemplo "diabetes", "asma", etc.), deben quedar explícitas en el campo 'question' de cada subconsulta.
+- Si se mencionan hombres/mujeres:
+  - Asume que el sexo/género proviene de la columna 'genero' de la tabla de pacientes, con valores 'M' y 'F'.
+- No inventes métricas nuevas que el colega no haya pedido.
+
+TU TAREA:
+1. Identificar qué piezas de información de la base serían útiles para responder la pregunta SIN CAMBIAR su naturaleza.
+2. Descomponer la pregunta en una lista de subconsultas bien definidas.
+3. Para cada subconsulta, indicar:
+   - id: un identificador corto sin espacios (ejemplo: "hombres_diabetes").
+   - description: para qué sirve esa subconsulta en el razonamiento clínico.
+   - question: una pregunta en lenguaje natural que describa EXACTAMENTE qué datos se deben obtener, fiel a lo que pide el colega.
+
+FORMATO DE RESPUESTA (ESTRICTO):
+Responde SOLO un JSON válido, sin comentarios, sin explicación adicional, con esta estructura exacta:
+
+{{
+  "subqueries": [
+    {{
+      "id": "string",
+      "description": "string",
+      "question": "string"
+    }}
+  ]
+}}
+
+Reglas adicionales:
+- Incluye al menos una subconsulta.
+- No inventes tablas ni campos; usa solo lo que esté implícito en el esquema (patients, diagnoses, clinical_notes).
+""".strip()
+
+        try:
+            response = LLM.invoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ])
+            raw = getattr(response, "content", str(response)).strip()
+
+            # Intentamos extraer JSON (primer { ... último })
+            try:
+                start = raw.index("{")
+                end = raw.rindex("}") + 1
+                json_str = raw[start:end]
+                plan = json.loads(json_str)
+            except Exception:
+                LOG.warning(f"No se pudo parsear JSON del plan, raw: {raw}")
+                raise
+
+            # Validación muy simple
+            if not isinstance(plan, dict) or "subqueries" not in plan:
+                raise ValueError("Plan sin 'subqueries'")
+
+            if not plan["subqueries"]:
+                raise ValueError("Lista de subqueries vacía")
+
+            return plan
+
+        except Exception as e:
+            LOG.warning(f"Fallo plan_data_requirements, uso plan trivial: {e}")
+            return {
+                "subqueries": [
+                    {
+                        "id": "main",
+                        "description": "Consulta principal",
+                        "question": query,
+                    }
+                ]
+            }
+
     def generate_sql(self, query: str) -> str:
         """
         Genera SQL con plan paso a paso + validación EXPLAIN (hasta 3 intentos).
@@ -421,8 +530,8 @@ class SQLAgent:
                 # 🔧 NUEVO: corregir alias mal calzados (p.ej. d.genero → p.genero)
                 sql = _route_misqualified_columns(sql, self.schema)
 
-                # Validación con EXPLAIN (si hay self.db)
-                db = getattr(self, "db", None)
+                # Validación con EXPLAIN usando el engine de SQLAlchemy
+                db = self.engine
                 ok, err = _validate_with_explain(db, sql)
                 if ok:
                     return sql
@@ -452,117 +561,214 @@ class SQLAgent:
             LOG.error(f"Error ejecutando SQL: {e}")
             return [{"error": str(e)}]
 
-    def analyze_results(self, query: str, sql: str, results: List[Dict]) -> str:
+    def analyze_results(self, main_query: str, bundles: List[Dict[str, Any]]) -> str:
         """
         Genera una opinión clínica basada en:
-        - query: pregunta clínica formulada por el médico
-        - sql: consulta SQL que generó los resultados (solo como contexto técnico)
-        - results: resultado crudo de la consulta (lista de dicts)
+        - main_query: pregunta clínica original del médico
+        - bundles: lista de dicts con la info de cada subconsulta:
+          [
+            {
+              "id": str,
+              "description": str,
+              "question": str,
+              "sql": str,
+              "rows": List[Dict]
+            },
+            ...
+          ]
         """
 
         if not LLM:
             # Fallback simple si no hay LLM configurado
-            return f"Resultados (sin análisis clínico por falta de LLM): {results}"
+            return f"Resultados (sin análisis clínico por falta de LLM): {bundles}"
 
-        # Prompt de SISTEMA: rol del modelo
         system_prompt = """
-    Eres un MÉDICO ESPECIALISTA que asiste a otros médicos interpretando datos ya analizados.
+Eres un MÉDICO ESPECIALISTA que asiste a otros médicos interpretando datos ya analizados.
 
-    SIEMPRE asume que tu lector ES UN PROFESIONAL DE LA SALUD, NO el paciente.
+SIEMPRE asume que tu lector ES UN PROFESIONAL DE LA SALUD, NO el paciente.
 
-    RECIBES SIEMPRE:
-    - Una PREGUNTA CLÍNICA formulada por otro médico.
-    - Un BLOQUE DE DATOS CLÍNICOS (resultado crudo de un análisis).
-    - OPCIONALMENTE, un BLOQUE DE CONTEXTO TÉCNICO (esquema de tablas y consulta utilizada).
+RECIBES SIEMPRE:
+- Una PREGUNTA CLÍNICA formulada por otro médico.
+- VARIOS BLOQUES DE DATOS CLÍNICOS agregados (resultados de diferentes subconsultas a la base).
+- OPCIONALMENTE, un BLOQUE DE CONTEXTO TÉCNICO que NO debes mencionar.
 
-    IMPORTANTE SOBRE EL CONTEXTO TÉCNICO:
-    - El esquema de la base de datos, la consulta y los nombres de tablas/campos se te dan SOLO para que entiendas mejor qué representan los números (por ejemplo, que se cuentan pacientes únicos, diagnósticos, consultas, etc.).
-    - NUNCA debes mencionar ni describir:
-      - SQL, queries, tablas, columnas, campos, bases de datos, tipos de datos, JSON.
-      - Nombres de tablas o columnas (por ejemplo, `patients`, `diagnoses`, `genero`, etc.).
-    - Tu respuesta debe ser 100% clínica, como si solo hubieras recibido un resumen numérico.
+IMPORTANTE SOBRE EL CONTEXTO TÉCNICO:
+- El esquema de la base de datos, las consultas y los nombres de tablas/campos se te dan SOLO para que entiendas mejor qué representan los números.
+- NUNCA debes mencionar ni describir:
+  - SQL, queries, tablas, columnas, campos, bases de datos, tipos de datos, JSON.
+  - Nombres de tablas o columnas.
+- Tu respuesta debe ser 100% clínica, como si solo hubieras recibido resúmenes numéricos.
 
-    TU TAREA:
-    1. Responder a la pregunta con una OPINIÓN CLÍNICA razonada, basándote en:
-       - Los datos numéricos disponibles.
-       - Tu conocimiento médico general.
-    2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
+MANEJO DE DATOS INCOMPLETOS:
+- Si una subconsulta tiene un resultado vacío (lista de filas vacía), debes interpretarlo como:
+  "No hay datos disponibles para esa subconsulta en la cohorte analizada".
+- Si una subconsulta contiene un error en lugar de datos, debes tratarla como información NO disponible.
+- En ambos casos:
+  - NO inventes números.
+  - NO infieras prevalencias ni cantidades a partir de subconsultas sin datos.
+  - Puedes mencionar, en términos clínicos generales, que la pregunta no puede ser respondida completamente por falta de datos.
 
-    ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
-    1) Resumen del hallazgo:
-       - Interpreta brevemente el resultado en términos clínicos.
-    2) Respuesta a la pregunta:
-       - Debes responder la pregunta con una opinión clínica razonada, basándote en los datos numéricos disponibles y tu conocimiento médico general.
+TU TAREA:
+1. Responder a la PREGUNTA CLÍNICA PRINCIPAL con una OPINIÓN CLÍNICA razonada, basándote en:
+   - Los datos numéricos disponibles en las distintas subconsultas.
+   - Tu conocimiento médico general.
+2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
 
-    REGLAS DE SEGURIDAD CLÍNICA:
-    - No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
-    - No des indicaciones directas al paciente (“usted debe…”); formula siempre sugerencias para el médico (“podría considerarse…”, “sería razonable evaluar…”).
-    - No inventes números que no estén en los datos. Si necesitas cantidades, deriva solo lo que sea lógicamente inferible.
+ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
+1) Resumen del hallazgo:
+   - Resume de forma clínica qué muestran los datos en conjunto (y si hay subconsultas sin datos).
+2) Respuesta a la pregunta:
+   - Contesta directamente la pregunta original, usando solo los datos disponibles.
+3) Interpretación clínica:
+   - Qué implican estos hallazgos (prevalencia, riesgo, carga de enfermedad, etc.), dentro de los límites de la información disponible.
+4) Recomendaciones / próximos pasos:
+   - Qué podría considerarse en términos de seguimiento, estudios complementarios, prevención, etc.
+5) Limitaciones:
+   - Destaca explícitamente si hay subconsultas sin datos o con errores y cómo eso limita la interpretación.
+   - Recalca que la decisión final debe basarse en la valoración clínica individual de los pacientes.
 
-    Responde SOLO con el texto de la opinión clínica. No menciones el contexto técnico ni expliques estas instrucciones.
-    """.strip()
+REGLAS DE SEGURIDAD CLÍNICA:
+- No des diagnósticos definitivos de individuos; habla SIEMPRE en términos de la cohorte o grupo.
+- No des indicaciones directas al paciente (“usted debe…”); formula siempre sugerencias para el médico (“podría considerarse…”, “sería razonable evaluar…”).
+- No inventes números que no estén en los datos. Si necesitas cantidades, deriva solo lo que sea lógicamente inferible.
 
-        # Armamos el prompt de usuario con:
-        # - pregunta clínica
-        # - datos crudos
-        # - contexto técnico (schema + SQL) marcado como NO mencionable
-        schema_text = ""
-        try:
-            # Si tu schema es un dict/list ["table: cols..."], lo convertimos a texto
-            if self.schema:
-                if isinstance(self.schema, (list, tuple)):
-                    schema_text = "\n".join(self.schema)
-                else:
-                    schema_text = str(self.schema)
-        except AttributeError:
-            schema_text = "No schema disponible"
+Responde SOLO con el texto de la opinión clínica. No menciones el contexto técnico ni expliques estas instrucciones.
+""".strip()
+
+        # Texto “clínico” de los resultados para que el modelo los use
+        datos_clinicos_lines = []
+        for i, b in enumerate(bundles, start=1):
+            rows = b.get("rows") or []
+            resumen_resultado: str
+
+            if not rows:
+                resumen_resultado = "SIN DATOS: la consulta no devolvió filas."
+            elif len(rows) == 1 and isinstance(rows[0], dict) and "error" in rows[0]:
+                resumen_resultado = f"SIN DATOS: la consulta produjo un error y no se dispone de información utilizable."
+            else:
+                resumen_resultado = (
+                    f"{len(rows)} fila(s) devueltas. Ejemplo de fila: {rows[0]}"
+                    if isinstance(rows[0], dict)
+                    else f"{len(rows)} fila(s) devueltas."
+                )
+
+            datos_clinicos_lines.append(
+                f"- Subconsulta {i} (id='{b.get('id', '')}')\n"
+                f"  Descripción: {b.get('description', '')}\n"
+                f"  Pregunta de datos: {b.get('question', '')}\n"
+                f"  Resumen de resultado: {resumen_resultado}\n"
+            )
+
+        datos_clinicos_text = "\n".join(datos_clinicos_lines)
+
+        # Contexto técnico completo (SQL + schema) SOLO para el modelo
+        schema_text = _build_schema_text(self.schema) if self.schema else "No schema disponible"
+        contexto_tecnico = {
+            "schema": self.schema,
+            "subqueries": [
+                {
+                    "id": b.get("id"),
+                    "question": b.get("question"),
+                    "sql": b.get("sql"),
+                    "rows": b.get("rows"),
+                }
+                for b in bundles
+            ],
+        }
+        contexto_tecnico_json = json.dumps(contexto_tecnico, ensure_ascii=False, indent=2)
 
         user_prompt = f"""
-    Pregunta clínica del colega:
-    {query}
+Pregunta clínica principal del colega:
+{main_query}
 
-    Datos clínicos (resultado crudo):
-    {results}
+Datos clínicos agregados (resultado de varias subconsultas, en forma de resumen clínico):
+{datos_clinicos_text}
 
-    Contexto técnico (SOLO PARA TI, NO MENCIONAR EN LA RESPUESTA):
+Contexto técnico (SOLO PARA TI, NO MENCIONAR EN LA RESPUESTA):
+Schema disponible:
+{schema_text}
 
-    Schema disponible:
-    {schema_text}
+Detalle técnico de subconsultas (SQL + resultados crudos):
+{contexto_tecnico_json}
 
-    SQL ejecutado:
-    {sql}
-
-    Redacta tu opinión clínica siguiendo las instrucciones del sistema.
-    """.strip()
+Redacta tu opinión clínica siguiendo las instrucciones del sistema, respondiendo a la PREGUNTA CLÍNICA PRINCIPAL.
+""".strip()
 
         try:
             response = LLM.invoke([
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt),
             ])
-            # Algunos LLMs devuelven .content directamente, otros en .content[0].text; ajusta si hace falta
             content = getattr(response, "content", None)
             if isinstance(content, str):
                 return content.strip()
-            # fallback por si el objeto viene más raro
             return str(response).strip()
-        except Exception:
-            # En caso de error, devolvemos al menos los resultados crudos
-            return f"Resultados (no se pudo generar análisis clínico): {results}"
+        except Exception as e:
+            LOG.error(f"Error en analyze_results: {e}")
+            return f"Resultados (no se pudo generar análisis clínico): {bundles}"
 
     def run(self, query: str) -> str:
         # Mostrar schema disponible para debug
         if not self.schema or not self.schema.get("tables"):
             return "Error: No se pudo obtener el schema de la base de datos. Verifica la conexión."
 
-        sql = self.generate_sql(query)
-        results = self.execute_query(sql)
-        analysis = self.analyze_results(query, sql, results)
+        # 1) Planificar qué datos hacen falta
+        plan = self.plan_data_requirements(query)
+        subqueries = plan.get("subqueries", [])
+        if not subqueries:
+            subqueries = [
+                {
+                    "id": "main",
+                    "description": "Consulta principal (fallback)",
+                    "question": query,
+                }
+            ]
 
-        # Incluir schema en la respuesta para debug
-        schema_info = "\n".join([f"{table}: {', '.join(info['columns'])}" for table, info in self.schema["tables"].items()])
-        
-        return f"{analysis}\n\n--- SCHEMA DISPONIBLE ---\n{schema_info}\n\n--- SQL ---\n{sql} \n--------QUERY RESULT-------------- \n{results}"
+        bundles: List[Dict[str, Any]] = []
+
+        # 2) Para cada subconsulta, generamos SQL y lo ejecutamos
+        for sq in subqueries:
+            sub_id = sq.get("id", "sin_id")
+            sub_desc = sq.get("description", "")
+            sub_question = sq.get("question", query)
+
+            sql = self.generate_sql(sub_question)
+            rows = self.execute_query(sql)
+
+            bundles.append({
+                "id": sub_id,
+                "description": sub_desc,
+                "question": sub_question,
+                "sql": sql,
+                "rows": rows,
+            })
+
+        # 3) Pasar TODOS los resultados al agente clínico
+        analysis = self.analyze_results(query, bundles)
+
+        # 4) Info de schema para debug
+        schema_info = "\n".join(
+            [f"{table}: {', '.join(info['columns'])}" for table, info in self.schema["tables"].items()]
+        )
+
+        # 5) Info técnica de subconsultas para debug (opcional)
+        debug_blocks = []
+        for b in bundles:
+            debug_blocks.append(
+                f"--- SUBCONSULTA {b.get('id')} ---\n"
+                f"Descripción: {b.get('description')}\n"
+                f"Pregunta de datos: {b.get('question')}\n"
+                f"SQL:\n{b.get('sql')}\n"
+                f"RESULTADO:\n{b.get('rows')}\n"
+            )
+        debug_text = "\n".join(debug_blocks)
+
+        return (
+            f"{analysis}\n\n"
+            f"--- SCHEMA DISPONIBLE ---\n{schema_info}\n\n"
+            f"--- DETALLE DE SUBCONSULTAS (DEBUG) ---\n{debug_text}"
+        )
+
 
 sql_agent = SQLAgent()
 
