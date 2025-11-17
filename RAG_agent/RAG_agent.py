@@ -1,279 +1,385 @@
-import os
-from pathlib import Path
+"""
+Agente RAG optimizado para búsqueda clínica.
+Incluye: reranking, threshold adecuado, reformulación mejorada,
+manejo de contexto, y mejoras en la recuperación.
+"""
 
-from langchain_community.document_loaders import TextLoader, PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import os
+import json
+from pathlib import Path
+from typing import TypedDict, Annotated, Sequence, Literal
+
+from dotenv import load_dotenv
 
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_chroma import Chroma
-
 from langchain_community.chat_models import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
+from langchain_core.documents import Document
 
-# Rutas relativas al archivo RAG_agent.py
-_RAG_AGENT_DIR = Path(__file__).parent
-DATA_DIR = _RAG_AGENT_DIR / "data"
-CHROMA_DIR = _RAG_AGENT_DIR / "chroma_db"
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+
+# =============================
+# CONFIGURACIONES
+# =============================
+
+load_dotenv()
+
+_ROOT = Path(__file__).parent
+CHROMA_DIR = _ROOT / "chroma_db"
 COLLECTION_NAME = "historias_clinicas"
+SEED_FILE = _ROOT.parent / "seeds" / "vector_seed.json"
 
-LLM_MODEL = "gemma3:1b"
-EMBEDDINGS_MODEL = "nomic-embed-text"
+LLM_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+EMBED_MODEL = os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+
+SIMILARITY_THRESHOLD = 0.9      # antes: 1.5 (muy flojo)
+MAX_CONTEXT_CHARS = 8000        # evita sobrepasar el contexto del modelo
+MAX_REFORM_QUERY_LEN = 15       # hace queries más efectivas para vectores
+
+# =============================
+# ESTADO DEL AGENTE
+# =============================
+
+class RAGState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    query: str
+    original_query: str
+    retrieved_docs: list[Document]
+    context: str
+    response: str
+    k: int
+    search_iterations: int
+    needs_more_info: bool
+    reformulated_query: str
 
 
-def load_documents():
-    #Cargamos todas las historias clínicas desde la carpeta data/
-    if not DATA_DIR.exists():
-        raise FileNotFoundError(
-            f"No existe el directorio {DATA_DIR}. "
-            f"Crealo y poné ahí tus historias clínicas."
+# =============================
+# AGENTE
+# =============================
+
+class RAGAgent_Optimized:
+    """
+    Versión optimizada del agente RAG:
+    - Mejor recuperación
+    - Reranking
+    - Reformulación optimizada para búsqueda vectorial
+    - Manejo de contexto
+    """
+
+    def __init__(self, k=5, max_iterations=3):
+        self.k = k
+        self.max_iterations = max_iterations
+
+        self.llm = ChatOllama(model=LLM_MODEL, base_url=OLLAMA_HOST, temperature=0.2)
+        self.embeddings = OllamaEmbeddings(model=EMBED_MODEL, base_url=OLLAMA_HOST)
+
+        self.vectordb = None
+        self.agent_graph = None
+
+        self._build_agent()
+
+    # ---------------------------------------------------------------------------
+    # VECTOR STORE
+    # ---------------------------------------------------------------------------
+
+    def _get_vector_db(self):
+        if self.vectordb is not None:
+            return self.vectordb
+
+        if not CHROMA_DIR.exists() or not any(CHROMA_DIR.iterdir()):
+            print("⚠️ No hay base vectorial encontrada. Creando desde seed...")
+            self.vectordb = self._create_from_seed()
+        else:
+            self.vectordb = Chroma(
+                collection_name=COLLECTION_NAME,
+                embedding_function=self.embeddings,
+                persist_directory=str(CHROMA_DIR),
+            )
+
+        return self.vectordb
+
+    def _create_from_seed(self):
+        if not SEED_FILE.exists():
+            raise FileNotFoundError("No existe seed JSON ni base vectorial.")
+
+        print(f"📘 Cargando seed desde {SEED_FILE}")
+        data = json.load(open(SEED_FILE, "r", encoding="utf-8"))
+        docs = []
+
+        for item in data:
+            docs.append(Document(
+                page_content=item.get("chunk", ""),
+                metadata={
+                    "patient_id": item.get("patient_id"),
+                    "seccion": item.get("seccion", ""),
+                    "tipo": item.get("tipo", "nota"),
+                    "fecha": item.get("fecha", None),
+                }
+            ))
+
+        CHROMA_DIR.mkdir(exist_ok=True)
+        return Chroma.from_documents(
+            docs,
+            embedding=self.embeddings,
+            collection_name=COLLECTION_NAME,
+            persist_directory=str(CHROMA_DIR),
         )
 
-    docs = []
-    for path in DATA_DIR.rglob("*"):
-        if path.is_file():
-            if path.suffix.lower() == ".txt":
-                loader = TextLoader(str(path), encoding="utf-8")
-                docs.extend(loader.load())
-            elif path.suffix.lower() == ".pdf":
-                loader = PyPDFLoader(str(path))
-                docs.extend(loader.load())
+    # ---------------------------------------------------------------------------
+    # RERANKING
+    # ---------------------------------------------------------------------------
 
-    if not docs:
-        raise ValueError(
-            f"No se encontraron documentos en {DATA_DIR}. "
-            f"Agregá historias clínicas simuladas en .txt o .pdf."
-        )
+    def _rerank(self, query: str, docs: list[Document]):
+        """
+        Usa el LLM para ordenar los documentos según relevancia.
+        Esto mejora muchísimo la calidad RAG.
+        """
 
-    return docs
+        if len(docs) <= 1:
+            return docs
 
+        prompt = f"""
+Evalúa relevancia respecto a esta consulta:
 
-def split_documents(docs):
-    # Hace chunking de los documentos para mejorar el RAG.
-    # Ajustá chunk_size y chunk_overlap según tus textos.
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=200,
-        separators=["\n\n", "\n", ".", " ", ""],
-    )
-    return splitter.split_documents(docs)
+QUERY:
+{query}
 
+Lista de documentos (muestra inicial):
+{[doc.page_content[:200] for doc in docs]}
 
-def build_vector_store_from_scratch():
-    # Crea el índice en Chroma a partir de los documentos en data/.
-    # Se persiste en chroma_db/ para reusar entre ejecuciones.
-    print("Cargando documentos...")
-    docs = load_documents()
-    print(f"   -> {len(docs)} documentos encontrados")
+Devuelve SOLO un JSON con índices ordenados (ejemplo: [1,0,2]).
+"""
 
-    print("Creamos los chunks de los documentos")
-    splits = split_documents(docs)
-    print(f"   -> {len(splits)} chunks generados")
+        try:
+            resp = self.llm.invoke([HumanMessage(content=prompt)]).content
+            order = json.loads(resp)
+            return [docs[i] for i in order if i < len(docs)]
+        except:
+            return docs
 
-    print("Creando embeddings")
-    
-    import os
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    
-    embeddings = OllamaEmbeddings(
-        model="nomic-embed-text",
-        base_url=OLLAMA_HOST,
-    )
+    # ---------------------------------------------------------------------------
+    # SEARCH
+    # ---------------------------------------------------------------------------
 
+    def _search(self, query: str, k: int):
+        db = self._get_vector_db()
 
-    print("Creando vectores")
-    vectordb = Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
-        collection_name=COLLECTION_NAME,
-        persist_directory=str(CHROMA_DIR),
-    )
-    print("Indice construido y persistido en", CHROMA_DIR)
-    return vectordb
+        results = db.similarity_search_with_score(query, k=k)
 
+        # Filtrar por threshold más estricto
+        filtered = [doc for doc, score in results if score < SIMILARITY_THRESHOLD]
 
-def get_vector_store():
-    # Si existe un índice persistido en chroma_db/, lo carga.
-    # Si no, lo construye desde cero.
-    import os
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    
-    embeddings = OllamaEmbeddings(
-        model=EMBEDDINGS_MODEL,
-        base_url=OLLAMA_HOST,
-    )
+        if not filtered:
+            filtered = [doc for doc, _ in results]  # fallback
 
-    if not CHROMA_DIR.exists() or not any(CHROMA_DIR.iterdir()):
-        return build_vector_store_from_scratch()
+        # RERANK
+        return self._rerank(query, filtered)[:k]
 
-    print("Cargando índice Chroma existente")
-    vectordb = Chroma(
-        collection_name=COLLECTION_NAME,
-        embedding_function=embeddings,
-        persist_directory=str(CHROMA_DIR),
-    )
-    return vectordb
+    # ---------------------------------------------------------------------------
+    # FORMAT CONTEXT
+    # ---------------------------------------------------------------------------
 
+    def _format_docs(self, docs):
+        if not docs:
+            return "No se encontraron documentos relevantes."
 
-def format_docs(docs):
-    """
-    Formatea los documentos recuperados para inyectarlos al prompt.
-    Le agrega numeración para debugging y evaluación.
-    """
-    partes = []
-    for i, d in enumerate(docs, start=1):
-        source = d.metadata.get("source", "desconocido")
-        partes.append(
-            f"[FRAGMENTO {i} - {source}]\n{d.page_content.strip()}"
-        )
-    return "\n\n".join(partes)
+        parts = []
+        for i, doc in enumerate(docs, 1):
+            parts.append(
+                f"[Documento {i} | Paciente {doc.metadata.get('patient_id')}]\n"
+                f"{doc.page_content.strip()}"
+            )
 
+        full = "\n\n".join(parts)
+        return full[:MAX_CONTEXT_CHARS]  # evitar contextos gigantes
 
-def create_adaptive_retriever(vectordb, k: int = 4, score_threshold: float = None):
-    """
-    Crea un retriever adaptativo que puede usar umbral de similitud.
-    
-    Args:
-        vectordb: Base de datos vectorial
-        k: Número máximo de documentos a recuperar
-        score_threshold: Umbral mínimo de similitud (0.0-1.0). 
-                        Chroma usa distancia coseno (0.0 = idéntico, 2.0 = opuesto).
-                        Para convertir a similitud: similitud = 1 - (distancia/2)
-                        Si se proporciona, filtra documentos con similitud < threshold.
-    """
-    if score_threshold is None:
-        # Comportamiento simple: retornar top k
-        return vectordb.as_retriever(search_kwargs={"k": k})
-    
-    # Wrapper que filtra por umbral de similitud
-    def filter_by_similarity(query: str):
-        # Obtener más candidatos para tener opciones de filtrar
-        docs_with_scores = vectordb.similarity_search_with_score(query, k=k * 3)
-        
-        # Chroma retorna distancia (menor = más similar)
-        # Convertir distancia a similitud: similitud = 1 - (distancia/2)
-        # O simplemente usar distancia máxima equivalente
-        # Para distancia coseno: 0.0 = idéntico, 2.0 = opuesto
-        max_distance = 2.0 - (score_threshold * 2.0)  # Convertir threshold a distancia máxima
-        
-        filtered = [
-            doc for doc, distance in docs_with_scores 
-            if distance <= max_distance
-        ][:k]
-        return filtered
-    
-    # Crear un retriever personalizado
-    from langchain_core.retrievers import BaseRetriever
-    
-    class ThresholdRetriever(BaseRetriever):
-        def _get_relevant_documents(self, query: str):
-            return filter_by_similarity(query)
-        
-        async def _aget_relevant_documents(self, query: str):
-            return filter_by_similarity(query)
-    
-    return ThresholdRetriever()
+    # ---------------------------------------------------------------------------
+    # NODOS DE LANGGRAPH
+    # ---------------------------------------------------------------------------
 
+    def _retrieve(self, state: RAGState):
+        query = state.get("reformulated_query") or state["query"]
+        prev_docs = state.get("retrieved_docs", [])
+        iteration = state["search_iterations"]
 
-def create_rag_chain(k: int = 4, score_threshold: float = None):
-    """
-    Crea la cadena RAG
-    
-    Args:
-        k: Número máximo de documentos a recuperar (por defecto 4).
-           Si usas score_threshold, este es el máximo que se retornará.
-        score_threshold: Umbral mínimo de similitud (0.0-1.0). 
-                        Si se proporciona, solo se incluyen documentos con score >= threshold.
-                        Esto permite recuperar solo documentos realmente relevantes,
-                        independientemente de cuántos sean (hasta k máximo).
-                        Si None, se usan los top k documentos sin filtrar por similitud.
-                        
-    Ejemplos:
-        # Recuperar top 4 documentos (comportamiento por defecto)
-        create_rag_chain(k=4)
-        
-        # Recuperar solo documentos con similitud >= 0.7 (máximo 10)
-        create_rag_chain(k=10, score_threshold=0.7)
-        
-        # Recuperar documentos muy similares (>= 0.9), máximo 5
-        create_rag_chain(k=5, score_threshold=0.9)
-    """
-    vectordb = get_vector_store()
-    retriever = create_adaptive_retriever(vectordb, k=k, score_threshold=score_threshold)
+        print(f"🔍 Recuperando documentos (iter {iteration}) para: {query}")
 
-    import os
+        new_docs = self._search(query, self.k)
 
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        # Combinar sin duplicar contenidos
+        existing_set = {d.page_content for d in prev_docs}
+        unique = [d for d in new_docs if d.page_content not in existing_set]
 
-    llm = ChatOllama(
-        model=LLM_MODEL,
-        base_url=OLLAMA_HOST,
-    )
+        state["retrieved_docs"] = prev_docs + unique
+        state["context"] = self._format_docs(state["retrieved_docs"])
+        return state
 
-    system_template = """
-Eres un asistente médico que responde exclusivamente en base
-a la información de historias clínicas proporcionadas en el CONTEXTO.
+    def _evaluate(self, state: RAGState):
+        prompt = f"""
+Evalúa la relevancia de la información recuperada.
+
+QUERY:
+{state['original_query']}
+
+CONTEXTO:
+{state['context']}
+
+Responde SOLO JSON:
+{{
+ "es_relevante": true/false,
+ "es_suficiente": true/false,
+ "falta_informacion": true/false,
+ "informacion_necesaria": "texto",
+ "necesita_mas_busqueda": true/false
+}}
+"""
+
+        try:
+            raw = self.llm.invoke([HumanMessage(content=prompt)]).content
+            json_str = raw[raw.find("{"): raw.rfind("}")+1]
+            ev = json.loads(json_str)
+        except:
+            ev = {"necesita_mas_busqueda": False}
+
+        state["needs_more_info"] = ev.get("necesita_mas_busqueda", False)
+
+        # límite de iteraciones
+        if state["search_iterations"] >= self.max_iterations:
+            state["needs_more_info"] = False
+
+        return state
+
+    def _reformulate(self, state: RAGState):
+        """
+        Reformulación optimizada para búsqueda vectorial: menos lingüística,
+        más keywords útiles.
+        """
+
+        prompt = f"""
+Reformula esta consulta SOLO PARA BÚSQUEDA VECTORIAL.
+
+QUERY ORIGINAL:
+{state['original_query']}
+
+CONTEXTO:
+{state['context'][:1000]}
 
 Reglas:
-- Si la información no está en el contexto, responde claramente que no puedes asegurarlo.
-- No inventes diagnósticos ni medicaciones.
-- Si la pregunta es ambigua, acláralo en la respuesta.
-- Cuando se te pida listar pacientes o casos, asegúrate de revisar TODO el contexto proporcionado y listar TODOS los casos encontrados, sin omitir ninguno.
-- Si hay múltiples pacientes mencionados en el contexto, incluye a todos en tu respuesta.
+- Usa máximo {MAX_REFORM_QUERY_LEN} palabras.
+- Usa términos clave del contexto.
+- NO hagas preguntas.
+- NO agregues lenguaje natural innecesario.
+- Solo keywords médicas relevantes.
 
-Contexto:
-{context}
+Devuelve SOLO la frase final, sin comillas.
 """
 
-    human_template = """
-Consulta del usuario:
-{question}
-"""
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_template),
-            ("human", human_template),
-        ]
-    )
-
-    rag_chain = (
-        {
-            "question": RunnablePassthrough(),
-            "context": retriever | format_docs,
-        }
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    return rag_chain
-
-
-def chat_loop():
-    print("Escribí tu pregunta médica (o 'salir' para terminar).\n")
-
-    rag_chain = create_rag_chain()
-
-    while True:
         try:
-            question = input("👤> ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\n👋 Saliendo...")
-            break
+            reform = self.llm.invoke([HumanMessage(content=prompt)]).content.strip()
+            if reform.startswith(("'", '"')) and reform.endswith(("'", '"')):
+                reform = reform[1:-1]
 
-        if question.lower() in {"salir", "exit", "quit"}:
-            print("👋 Listo, nos vemos.")
-            break
+            state["reformulated_query"] = reform
+            state["query"] = reform
+            state["search_iterations"] += 1
 
-        if not question:
-            continue
+            print(f"🔄 Nueva reformulación: {reform}")
 
-        print("🤖> (Pensando...)\n")
-        answer = rag_chain.invoke(question)
-        print(f"🤖 {answer}\n")
+        except:
+            state["needs_more_info"] = False
+
+        return state
+
+    def _generate(self, state: RAGState):
+        system = """
+Eres un asistente clínico experto. 
+Responde SOLO con información contenida en el contexto.
+No inventes nada. Si no está, dilo explícitamente.
+"""
+
+        human = f"""
+CONTEXTO:
+{state['context']}
+
+PREGUNTA:
+{state['original_query']}
+"""
+
+        out = self.llm.invoke([
+            SystemMessage(content=system),
+            HumanMessage(content=human)
+        ])
+
+        state["response"] = out.content
+        return state
+
+    # ---------------------------------------------------------------------------
+    # Routing
+    # ---------------------------------------------------------------------------
+
+    def _route(self, state: RAGState):
+        if state["needs_more_info"]:
+            return "reformulate"
+        return "generate"
+
+    # ---------------------------------------------------------------------------
+    # BUILD GRAPH
+    # ---------------------------------------------------------------------------
+
+    def _build_agent(self):
+        g = StateGraph(RAGState)
+
+        g.add_node("retrieve", self._retrieve)
+        g.add_node("evaluate", self._evaluate)
+        g.add_node("reformulate", self._reformulate)
+        g.add_node("generate", self._generate)
+
+        g.set_entry_point("retrieve")
+        g.add_edge("retrieve", "evaluate")
+        g.add_conditional_edges("evaluate", self._route,
+                                {"reformulate": "reformulate",
+                                 "generate": "generate"})
+        g.add_edge("reformulate", "retrieve")
+        g.add_edge("generate", END)
+
+        self.agent_graph = g.compile()
+
+    # ---------------------------------------------------------------------------
+    # INVOCACIÓN
+    # ---------------------------------------------------------------------------
+
+    def invoke(self, query: str):
+        init = {
+            "messages": [],
+            "query": query,
+            "original_query": query,
+            "retrieved_docs": [],
+            "context": "",
+            "response": "",
+            "k": self.k,
+            "search_iterations": 0,
+            "needs_more_info": False,
+            "reformulated_query": ""
+        }
+        out = self.agent_graph.invoke(init)
+        return out["response"]
 
 
-if __name__ == "__main__":
-    chat_loop()
+# ============================================
+# WRAPPER PARA JUDGE.PY
+# ============================================
+
+def create_rag_chain(k=4, score_threshold=None):
+    agent = RAGAgent_Optimized(k=k)
+
+    class Wrapper:
+        def __init__(self, agent):
+            self.agent = agent
+
+        def invoke(self, query):
+            return self.agent.invoke(query)
+
+    return Wrapper(agent)
