@@ -13,7 +13,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 
-from RAG_agent.RAG_agent_optimized import create_rag_chain   # tu nueva versión
+from RAG_agent.RAG_agent import create_rag_chain   # tu nueva versión
 from sql_agent import run_sql_agent
 
 load_dotenv()
@@ -26,7 +26,7 @@ log = logging.getLogger("judge")
 # ------------------------------
 
 LLM = ChatOllama(
-    model=os.getenv("OLLAMA_MODEL", "llama3.1:8b"),
+    model=os.getenv("OLLAMA_MODEL", "gpt-oss:20B"),
     base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
     temperature=0.0,
 )

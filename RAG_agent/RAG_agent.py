@@ -31,7 +31,7 @@ CHROMA_DIR = _ROOT / "chroma_db"
 COLLECTION_NAME = "historias_clinicas"
 SEED_FILE = _ROOT.parent / "seeds" / "vector_seed.json"
 
-LLM_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+LLM_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:20B")
 EMBED_MODEL = os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
