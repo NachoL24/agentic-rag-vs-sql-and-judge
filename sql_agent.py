@@ -710,10 +710,14 @@ Redacta tu opinión clínica siguiendo las instrucciones del sistema, respondien
             LOG.error(f"Error en analyze_results: {e}")
             return f"Resultados (no se pudo generar análisis clínico): {bundles}"
 
-    def run(self, query: str) -> str:
+    def _execute_query_plan(self, query: str) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Ejecuta el plan de consultas y devuelve el análisis y los bundles.
+        Método interno para evitar duplicación de código.
+        """
         # Mostrar schema disponible para debug
         if not self.schema or not self.schema.get("tables"):
-            return "Error: No se pudo obtener el schema de la base de datos. Verifica la conexión."
+            return ("Error: No se pudo obtener el schema de la base de datos. Verifica la conexión.", [])
 
         # 1) Planificar qué datos hacen falta
         plan = self.plan_data_requirements(query)
@@ -749,31 +753,18 @@ Redacta tu opinión clínica siguiendo las instrucciones del sistema, respondien
         # 3) Pasar TODOS los resultados al agente clínico
         analysis = self.analyze_results(query, bundles)
 
-        # 4) Info de schema para debug
-        schema_info = "\n".join(
-            [f"{table}: {', '.join(info['columns'])}" for table, info in self.schema["tables"].items()]
-        )
+        return (analysis, bundles)
 
-        # 5) Info técnica de subconsultas para debug (opcional)
-        debug_blocks = []
-        for b in bundles:
-            debug_blocks.append(
-                f"--- SUBCONSULTA {b.get('id')} ---\n"
-                f"Descripción: {b.get('description')}\n"
-                f"Pregunta de datos: {b.get('question')}\n"
-                f"SQL:\n{b.get('sql')}\n"
-                f"RESULTADO:\n{b.get('rows')}\n"
-            )
-        debug_text = "\n".join(debug_blocks)
-
-        return (
-            f"{analysis}\n\n"
-            #f"--- SCHEMA DISPONIBLE ---\n{schema_info}\n\n"
-            #f"--- DETALLE DE SUBCONSULTAS (DEBUG) ---\n{debug_text}"
-        )
+    def run(self, query: str) -> str:
+        analysis, _ = self._execute_query_plan(query)
+        return analysis
 
 
 sql_agent = SQLAgent()
 
-def run_sql_agent(query: str) -> str:
-    return sql_agent.run(query)
+def run_sql_agent(query: str):
+    analysis, bundles = sql_agent._execute_query_plan(query)
+    return {
+        "response": analysis,
+        "data": bundles
+    }

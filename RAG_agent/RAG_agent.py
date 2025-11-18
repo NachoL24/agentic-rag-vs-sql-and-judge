@@ -35,7 +35,7 @@ LLM_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:20B")
 EMBED_MODEL = os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-SIMILARITY_THRESHOLD = 0.9      # antes: 1.5 (muy flojo)
+SIMILARITY_THRESHOLD = 1.2      # Threshold balanceado: recupera más documentos pero mantiene relevancia
 MAX_CONTEXT_CHARS = 8000        # evita sobrepasar el contexto del modelo
 MAX_REFORM_QUERY_LEN = 15       # hace queries más efectivas para vectores
 
@@ -69,7 +69,7 @@ class RAGAgent_Optimized:
     - Manejo de contexto
     """
 
-    def __init__(self, k=5, max_iterations=3):
+    def __init__(self, k=10, max_iterations=3):
         self.k = k
         self.max_iterations = max_iterations
 
@@ -191,16 +191,21 @@ Devuelve SOLO un JSON con índices ordenados (ejemplo: [1,0,2]).
     def _search(self, query: str, k: int):
         db = self._get_vector_db()
 
-        results = db.similarity_search_with_score(query, k=k)
+        # Buscar más documentos de los necesarios para tener opciones después del filtrado
+        search_k = min(k * 2, 30)  # Buscar hasta 2x k o máximo 30 documentos
+        results = db.similarity_search_with_score(query, k=search_k)
 
-        # Filtrar por threshold más estricto
+        # Filtrar por threshold balanceado
         filtered = [doc for doc, score in results if score < SIMILARITY_THRESHOLD]
 
-        if not filtered:
-            filtered = [doc for doc, _ in results]  # fallback
+        # Si después del filtrado tenemos menos de k, usar los k mejores sin filtrar
+        # Esto asegura que siempre tengamos suficientes documentos
+        if len(filtered) < k:
+            filtered = [doc for doc, _ in results[:k]]  # Tomar los k mejores
 
-        # RERANK
-        return self._rerank(query, filtered)[:k]
+        # RERANK y devolver los k mejores
+        reranked = self._rerank(query, filtered)
+        return reranked[:k]
 
     # ---------------------------------------------------------------------------
     # FORMAT CONTEXT
@@ -389,7 +394,10 @@ PREGUNTA:
             "reformulated_query": ""
         }
         out = self.agent_graph.invoke(init)
-        return out["response"]
+        return {
+            "response": out["response"],
+            "documents": out.get("retrieved_docs", [])
+        }
 
 
 # ============================================
@@ -404,6 +412,10 @@ def create_rag_chain(k=4, score_threshold=None):
             self.agent = agent
 
         def invoke(self, query):
-            return self.agent.invoke(query)
+            result = self.agent.invoke(query)
+            # Si es un string (compatibilidad hacia atrás), devolverlo como dict
+            if isinstance(result, str):
+                return {"response": result, "documents": []}
+            return result
 
     return Wrapper(agent)
