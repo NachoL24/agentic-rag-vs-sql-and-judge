@@ -122,6 +122,30 @@ No inventes datos. No asumas información no presente.
 
 ---
 
+## 📋 CONSULTA ORIGINAL
+
+{prompt}
+
+---
+
+## 📝 RESPUESTAS A EVALUAR
+
+### 🔍 RESPUESTA DEL AGENTE RAG
+(Basada en recuperación semántica de base vectorial)
+
+{rag}
+
+---
+
+### 💾 RESPUESTA DEL AGENTE SQL
+(Basada en consultas estructuradas a base relacional)
+
+{sql}
+
+---
+
+---
+
 # 📘 **BASE DE CONOCIMIENTOS CLÍNICA (RESUMEN COMPLETO)**
 
 ## 👤 Pacientes (id → datos)
@@ -275,8 +299,8 @@ Evalúa ambas respuestas según:
 
 Debes responder EXACTAMENTE en este formato:
 
-```
-{
+```json
+{{
   "winner": "rag" | "sql" | "tie",
   "rag_score": 0.0,
   "sql_score": 0.0,
@@ -285,7 +309,7 @@ Debes responder EXACTAMENTE en este formato:
   "rag_cons": [],
   "sql_pros": [],
   "sql_cons": []
-}
+}}
 ```
 No incluyas texto fuera del JSON.
 """

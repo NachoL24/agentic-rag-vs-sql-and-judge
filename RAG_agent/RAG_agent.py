@@ -303,6 +303,18 @@ Reglas:
 - NO agregues lenguaje natural innecesario.
 - Solo keywords médicas relevantes.
 
+TU TAREA:
+1. Responder a la PREGUNTA CLÍNICA PRINCIPAL con una OPINIÓN CLÍNICA razonada, basándote en:
+   - Los datos numéricos disponibles en las distintas subconsultas.
+   - Tu conocimiento médico general.
+2. NO hablar de aspectos técnicos ni de cómo se obtuvieron los datos.
+
+ESTRUCTURA RECOMENDADA DE LA RESPUESTA:
+    1) Resumen del hallazgo:
+       - Interpreta brevemente el resultado en términos clínicos.
+    2) Respuesta a la pregunta:
+       - Debes responder la pregunta con una opinión clínica razonada, basándote en los datos numéricos disponibles y tu conocimiento médico general.
+
 Devuelve SOLO la frase final, sin comillas.
 """
 

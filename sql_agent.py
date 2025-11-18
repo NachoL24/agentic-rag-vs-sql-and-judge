@@ -22,7 +22,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:20B")
 DB_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/historias_clinicas")
 
 try:
-    LLM = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, temperature=0)
+    LLM = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, temperature=0.1)
 except Exception as e:
     LOG.warning(f"Error configurando Ollama: {e}")
     LLM = None
